@@ -6,6 +6,8 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { encrypt, vapidHeader, sendPush, b64u, unb64u } from '../supabase/functions/_shared/webpush.js';
 import { clocks, planReminders, logCutoff, DAILY_CAP } from '../supabase/functions/_shared/plan.js';
+import { makeToken, hashToken, TOKEN } from '../supabase/functions/_shared/tokens.js';
+import vm from 'node:vm';
 
 const subtle = globalThis.crypto.subtle;
 
@@ -118,5 +120,75 @@ assert.equal(logCutoff(new Date(run)), '2026-10-14', 'the log keeps two weeks');
 const odd = [{ ...hm(B, 'gym', '19:15:00'), time: 1915 }, ...habitMonths]; // B's row makes planning B throw
 const survived = planReminders({ people, habitMonths: odd, ticks: [], sent: [] });
 assert.deepEqual(survived.map((x) => x.user_id), [A], "one person's odd data skips only them, never anyone else");
+
+// ---------- Later: reminders put off are sent again, once more, if still due (D-039) ----------
+const laterSent = [{ user_id: A, slug: 'gym', day: '2026-10-28', remind_again_at: '2026-10-28T01:10:00Z', sends: 1 }];
+const later = planReminders({ people: people.slice(0, 1), habitMonths, ticks: [], sent: laterSent });
+const again = later.find((x) => x.again);
+assert.ok(again && again.slug === 'gym', 'a reminder put off with Later is sent again');
+assert.match(again.payload.body, /^Still to do: Gym\. There's still time today\.$/, 'and says so');
+assert.equal(planReminders({ people: people.slice(0, 1), habitMonths, ticks: [{ user_id: A, slug: 'gym', day: '2026-10-28' }], sent: laterSent }).filter((x) => x.again).length, 0, 'not if it was ticked meanwhile');
+assert.equal(planReminders({ people: clocks([{ user_id: A, off: ['gym'], time_zone: 'Asia/Kolkata' }], new Date(run)), habitMonths, ticks: [], sent: laterSent }).filter((x) => x.again).length, 0, 'not if it was switched off');
+assert.equal(planReminders({ people: people.slice(0, 1), habitMonths, ticks: [], sent: [{ ...laterSent[0], remind_again_at: null }] }).filter((x) => x.again).length, 0, 'only when Later was pressed');
+const busy = Array.from({ length: DAILY_CAP }, (_, i) => ({ user_id: A, slug: `h${i}`, day: '2026-10-28', sends: 1 }));
+assert.equal(planReminders({ people: people.slice(0, 1), habitMonths, ticks: [], sent: [...busy, ...laterSent] }).length, 0, 'Later counts towards the daily cap');
+
+// ---------- One-time tokens ----------
+const t1 = makeToken(), t2 = makeToken();
+assert.match(t1, TOKEN, 'a token is 32 bytes in base64url');
+assert.notEqual(t1, t2, 'every token is new');
+assert.match(await hashToken(t1), /^[0-9a-f]{64}$/, 'only a SHA-256 hash is stored');
+assert.equal(await hashToken(t1), await hashToken(t1), 'the hash is stable');
+
+// ---------- The service worker, in a sandbox ----------
+const swSource = readFileSync(join(import.meta.dirname, '../public/sw.js'), 'utf8');
+function worker({ fetchReply = { result: 'done' }, fetchFails = false, tabs = [] } = {}) {
+  const handlers = {}, shown = [], posted = [], fetched = [], waits = [];
+  const self = {
+    addEventListener: (type, fn) => { handlers[type] = fn; },
+    skipWaiting() {},
+    registration: { showNotification: async (title, options) => { shown.push({ title, ...options }); } },
+    clients: { matchAll: async () => tabs.map((url) => ({ url, postMessage: (m) => posted.push(m), focus: async () => {} })), openWindow: async () => {}, claim: async () => {} },
+  };
+  const fetch = async (url, init) => { fetched.push({ url, init }); if (fetchFails) throw new TypeError('offline'); return { ok: true, json: async () => fetchReply }; };
+  vm.runInNewContext(swSource, { self, fetch, URL, URLSearchParams, JSON, console });
+  const fire = async (type, event) => { handlers[type]({ waitUntil: (p) => waits.push(p), ...event }); await Promise.all(waits); };
+  // Plain copies: objects made inside the sandbox don't compare strictly with ones made outside.
+  const plain = (x) => JSON.parse(JSON.stringify(x));
+  return { fire, get shown() { return plain(shown); }, get posted() { return plain(posted); }, fetched };
+}
+const ACT = 'https://txmseoofjrvsmxyaiwps.supabase.co/functions/v1/act-reminder';
+const pushOf = (msg) => ({ data: { json: () => msg } });
+const good = { title: 'Gym · 09:00', body: 'Next up: Gym at 09:00.', habitId: 'gym', date: '2026-10-28', token: t1, act: ACT };
+let w = worker();
+await w.fire('push', pushOf(good));
+assert.deepEqual(w.shown[0].actions.map((a) => a.action), ['done', 'later'], 'a reminder with a token shows Done and Later');
+for (const [bad, what] of [[{ ...good, token: 'short' }, 'a malformed token'], [{ ...good, act: 'https://evil.example.com/steal' }, 'an address that isn\'t our function'], [{ ...good, habitId: 'Bad Id' }, 'a bad habit id']]) {
+  w = worker();
+  await w.fire('push', pushOf(bad));
+  assert.equal(w.shown[0].actions.length, 0, `no buttons for ${what}`);
+  assert.equal(w.shown[0].data.token, undefined, `and the token isn't kept, for ${what}`);
+}
+const clickOn = (action, data = { habitId: 'gym', date: '2026-10-28', token: t1, act: ACT }) => ({ action, notification: { data, close() {} } });
+w = worker({ tabs: ['https://onemorefold.com/app'] });
+await w.fire('notificationclick', clickOn('done'));
+assert.equal(w.fetched[0].url, ACT, 'Done goes to act-reminder');
+assert.deepEqual(JSON.parse(w.fetched[0].init.body), { token: t1, act: 'done' }, 'with the token and nothing else');
+assert.deepEqual(w.posted, [{ type: 'eightfold-remind', act: 'done', habitId: 'gym', date: '2026-10-28' }], 'and an open tab ticks it straight away');
+assert.equal(w.shown.length, 0, 'quietly, when it worked');
+w = worker({ fetchReply: { result: 'later' }, tabs: ['https://onemorefold.com/app'] });
+await w.fire('notificationclick', clickOn('later'));
+assert.equal(JSON.parse(w.fetched[0].init.body).act, 'later', 'Later goes to act-reminder too');
+assert.equal(w.posted.length, 0, 'and changes nothing in the tab');
+w = worker({ fetchReply: { result: 'gone' } });
+await w.fire('notificationclick', clickOn('done'));
+assert.equal(w.shown[0].title, 'That reminder has passed', 'a used or expired token says so');
+w = worker({ fetchFails: true });
+await w.fire('notificationclick', clickOn('done'));
+assert.equal(w.shown[0].title, "That didn't reach your account", 'offline says so too');
+w = worker({ tabs: ['https://onemorefold.com/app'] });
+await w.fire('notificationclick', clickOn('done', { habitId: 'gym', date: '2026-10-28' }));
+assert.equal(w.fetched.length, 0, 'an in-tab reminder (no token) keeps going to the tab, not the server');
+assert.equal(w.posted[0].act, 'done');
 
 console.log('push: all checks pass');

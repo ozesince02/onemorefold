@@ -1,6 +1,8 @@
 // send-reminders (D-028): Supabase Cron calls this every 30 minutes. It finds the habits due in
 // each person's next half hour (in their own time zone), sends one encrypted Web Push to each of
-// their devices, and remembers what it sent so nothing goes out twice.
+// their devices, and remembers what it sent so nothing goes out twice. Each reminder carries a
+// one-time token for its Done and Later buttons (D-039, act-reminder), and reminders someone put
+// off with Later are sent once more if they're still due.
 //
 // Secrets (Supabase → Edge Functions → Secrets, never in git):
 //   CRON_SECRET         the cron job sends it as "Authorization: Bearer ..."; anything else is refused
@@ -15,6 +17,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.3';
 import { sendPush } from '../_shared/webpush.js';
 import { clocks, planReminders, logCutoff } from '../_shared/plan.js';
+import { makeToken, hashToken, TOKEN_HOURS } from '../_shared/tokens.js';
 
 const PAGE = 1000;  // the API's most rows per request
 const BATCH = 100;  // people per round
@@ -51,6 +54,9 @@ async function run(now: Date) {
     }
   };
 
+  // Where the notification's Done and Later buttons send their token (D-039).
+  const actUrl = `${env('SUPABASE_URL')}/functions/v1/act-reminder`;
+
   const settings = await all((a, b) => db.from('push_settings').select('user_id, off, time_zone')
     .eq('reminders', true).order('user_id').range(a, b));
   const total = { people: 0, reminders: 0, delivered: 0, gone: 0, failed: 0 };
@@ -71,7 +77,7 @@ async function run(now: Date) {
         .in('user_id', ids).in('month', months).not('time', 'is', null).order('user_id').order('month').order('slug').range(a, b)),
       all((a, b) => db.from('ticks').select('user_id, slug, day')
         .in('user_id', ids).in('month', months).order('user_id').order('slug').order('day').range(a, b)),
-      all((a, b) => db.from('push_log').select('user_id, slug, day')
+      all((a, b) => db.from('push_log').select('user_id, slug, day, remind_again_at, sends')
         .in('user_id', ids).in('day', days).eq('kind', 'remind').order('user_id').order('day').order('slug').range(a, b)),
     ]);
 
@@ -79,11 +85,22 @@ async function run(now: Date) {
     total.people += people.length;
     total.reminders += plan.length;
     for (const item of plan) {
-      // Claim it first: if another run got there, the row exists and nothing is returned.
-      const claimed = check(await db.from('push_log')
-        .upsert({ user_id: item.user_id, kind: 'remind', slug: item.slug, day: item.day }, { onConflict: 'user_id,kind,slug,day', ignoreDuplicates: true })
-        .select('slug')) as any[];
+      // Claim it first: if another run got there, nothing is returned. A new reminder claims a new
+      // log row; one put off with Later claims its "remind again" mark.
+      const claimed = item.again
+        ? check(await db.from('push_log').update({ remind_again_at: null, sends: (sent.find((r) => r.user_id === item.user_id && r.slug === item.slug && r.day === item.day)?.sends || 1) + 1 })
+          .match({ user_id: item.user_id, kind: 'remind', slug: item.slug, day: item.day }).not('remind_again_at', 'is', null).lt('sends', 3).select('slug')) as any[]
+        : check(await db.from('push_log')
+          .upsert({ user_id: item.user_id, kind: 'remind', slug: item.slug, day: item.day }, { onConflict: 'user_id,kind,slug,day', ignoreDuplicates: true })
+          .select('slug')) as any[];
       if (!claimed.length) continue;
+      // The buttons' one-time token: only its hash is kept; the token travels encrypted.
+      const token = makeToken();
+      check(await db.from('push_actions').insert({
+        token_hash: await hashToken(token), user_id: item.user_id, slug: item.slug, day: item.day,
+        expires_at: new Date(now.getTime() + TOKEN_HOURS * 3600000).toISOString(),
+      }));
+      item.payload = { ...item.payload, token, act: actUrl };
       await Promise.all(subs.filter((d) => d.user_id === item.user_id).map(async (device) => {
         try {
           const status = await sendPush(device, item.payload, vapid);
@@ -103,6 +120,7 @@ async function run(now: Date) {
     }
   }
   await db.from('push_log').delete().lt('day', logCutoff(now));
+  await db.from('push_actions').delete().lt('expires_at', now.toISOString());
   return total;
 }
 

@@ -712,3 +712,31 @@ Accepted · 30 Oct 2026 · replaces D-015
 - **Outside the code** (the owner's dashboards): the Google sign-in consent screen's app name, the
   Supabase sign-in email templates and sender name, the repository's name and description.
 
+## D-039 Done and Later on reminders sent with the app closed
+Accepted · 1 Nov 2026 · plan: [buddies-and-notifications.md](buddies-and-notifications.md), setup: [push-setup.md](push-setup.md)
+
+- **Decision:** each reminder from `send-reminders` carries a one-time token. The service worker
+  shows Done and Later only when the token and the address it goes to look right, and posts the
+  token to a new Edge Function, `act-reminder`, which calls `act_on_reminder()` in the database.
+  - **Done** ticks that habit for that day. An open tab ticks it locally at the same moment, so
+    the screen updates without waiting for sync.
+  - **Later** marks the reminder to be sent again on the next half-hourly run if it's still due
+    and not ticked, as "Still to do", with a new token. At most three sends of one reminder.
+- **The token is the whole permission:**
+  - 32 random bytes, of which only the SHA-256 is stored;
+  - it travels only inside the notification, which is encrypted for the person's devices;
+  - it works once (it's marked used in the same statement that checks it), and expires after 36
+    hours;
+  - it can only tick or snooze that one habit on that one day.
+
+  `act-reminder` runs without JWT checks because a service worker has no session.
+- **Why not sign in instead:** the browser's push service delivers to a service worker that can't
+  reach the session in the page's storage, and a long-lived credential in the notification would
+  be worth stealing. A one-time token isn't.
+- **Not on iPhone and iPad:** Safari doesn't show actions on web notifications; tapping opens the
+  app as before.
+- **Limits:**
+  - **Other devices:** a Done made on the server reaches them on their next sync (when they open
+    or every few minutes), not instantly. The server doesn't broadcast it.
+  - **The 30-minute job:** Later waits for the next run, so it means "within half an hour".
+
