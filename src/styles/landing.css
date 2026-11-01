@@ -330,7 +330,11 @@ section { scroll-margin-top: 24px; }
 
 /* Footer: the name returns at full width */
 .foot { padding-top: clamp(64px, 8vw, 128px); padding-bottom: 32px; overflow: hidden; }
-.foot-mark { font-family: var(--display); font-size: clamp(48px, 18.8vw, 280px); line-height: 1; padding-bottom: .1em; letter-spacing: -0.05em; color: var(--accent); margin-left: -0.04em; }
+/* The big wordmark fills the footer's width exactly: sized from the footer itself (container query
+   units), so it fits at any screen width and with any word. "onemorefold" in Dela Gothic One at this
+   letter-spacing is about 6.95 times its font size wide, so 14cqi fills 97% of the footer. */
+.foot { container-type: inline-size; }
+.foot-mark { font-family: var(--display); font-size: min(14cqi, 200px); line-height: 1; padding-bottom: .1em; letter-spacing: -0.05em; color: var(--accent); margin-left: -0.04em; white-space: nowrap; }
 .foot-row { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 32px; margin-bottom: 40px; font-size: 14px; color: var(--ink-2); }
 .credits { font-size: 14px; line-height: 1.5; max-width: 90ch; }
 

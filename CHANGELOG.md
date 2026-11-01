@@ -3,6 +3,12 @@
 What changed, for people using the app. Why it changed lives in [docs/decisions.md](docs/decisions.md).
 Dates are when the work landed.
 
+## 0.12.1 — 30 October 2026
+
+### Fixed
+- The big "onemorefold" at the foot of the landing page ran off the right edge (it was sized for
+  the shorter "eightfold"). It now fits the page at any width.
+
 ## 0.12.0 — 30 October 2026
 
 ### Changed
