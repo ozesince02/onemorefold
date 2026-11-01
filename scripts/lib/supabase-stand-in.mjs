@@ -7,7 +7,7 @@ import { PGlite } from '@electric-sql/pglite';
 export async function supabaseStandIn() {
   const db = new PGlite();
   await db.exec(`
-    create role anon nologin; create role authenticated nologin;
+    create role anon nologin; create role authenticated nologin; create role service_role nologin;
     create schema auth;
     create table auth.users (id uuid primary key, email text);
     create function auth.uid() returns uuid language sql stable as

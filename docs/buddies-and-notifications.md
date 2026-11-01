@@ -77,6 +77,9 @@ Also:
 - **Dead devices:** when the push service says an address no longer exists, its row is deleted.
 
 ### Done and "Later" from a closed app
+**Built 1 November 2026 (D-039).** Tokens last 36 hours rather than to the end of the day, and a
+reminder can be put off at most twice (three sends). The rest is as planned:
+
 The buttons need to work without the app open or anyone signed in. Each notification carries a
 single-use token that allows exactly one thing (tick this habit today, or snooze it once) and
 expires at the end of the day. The tick is written on the server and reaches the app through
