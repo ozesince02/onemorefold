@@ -18,6 +18,7 @@ assert.doesNotMatch(html, /<img|<script/, 'panel and link text are escaped');
 assert.match(bulletinHTML(b), /href="\/app(\.html)?"/, 'a named page becomes its address');
 assert.doesNotMatch(bulletinHTML({ ...b, link: { text: 'Win', href: 'https://evil.example.com' } }), /<a /, 'an outside address is never linked');
 assert.doesNotMatch(bulletinHTML({ ...b, link: { text: 'x', href: 'javascript:alert(1)' } }), /<a /, 'nor a script');
+assert.doesNotMatch(bulletinHTML({ ...b, link: { text: 'x', href: 'constructor' } }), /<a /, 'nor a name that only exists on every object');
 assert.equal((bulletinHTML({ ...b, panels: ['1', '2', '3', '4', '5', '6'] }).match(/noren-panel/g) || []).length, 4, 'at most four strips');
 
 // The message that's live: short phrases, a valid id.

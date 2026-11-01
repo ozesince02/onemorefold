@@ -20,7 +20,7 @@ export function shouldShow(b = BULLETIN, { date = today(), closedId = null } = {
 
 export function bulletinHTML(b = BULLETIN) {
   const panels = b.panels.slice(0, 4).map((p) => `<li class="noren-panel">${esc(p)}</li>`).join('');
-  const href = PAGES[b.link?.href];
+  const href = b.link && Object.hasOwn(PAGES, b.link.href) ? PAGES[b.link.href] : null;
   const link = href ? `<a class="noren-link" href="${esc(href)}">${esc(b.link.text)}</a>` : '';
   return `<section class="noren" aria-label="${esc(b.label || 'Notice')}">
     <span class="noren-rod" aria-hidden="true"></span>
