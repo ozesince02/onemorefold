@@ -3,7 +3,7 @@
 What changed, for people using the app. Why it changed lives in [docs/decisions.md](docs/decisions.md).
 Dates are when the work landed.
 
-## Unreleased
+## 0.13.0 — 1 November 2026
 
 ### Added
 - **Done and Later, right on the reminder.** A reminder that arrives with One More Fold closed now
