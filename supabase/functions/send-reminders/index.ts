@@ -94,13 +94,18 @@ async function run(now: Date) {
           .upsert({ user_id: item.user_id, kind: 'remind', slug: item.slug, day: item.day }, { onConflict: 'user_id,kind,slug,day', ignoreDuplicates: true })
           .select('slug')) as any[];
       if (!claimed.length) continue;
-      // The buttons' one-time token: only its hash is kept; the token travels encrypted.
-      const token = makeToken();
-      check(await db.from('push_actions').insert({
-        token_hash: await hashToken(token), user_id: item.user_id, slug: item.slug, day: item.day,
-        expires_at: new Date(now.getTime() + TOKEN_HOURS * 3600000).toISOString(),
-      }));
-      item.payload = { ...item.payload, token, act: actUrl };
+      // The buttons' one-time token: only its hash is kept; the token travels encrypted. If it can't
+      // be saved, this reminder goes out without buttons rather than not at all, and the run goes on.
+      try {
+        const token = makeToken();
+        check(await db.from('push_actions').insert({
+          token_hash: await hashToken(token), user_id: item.user_id, slug: item.slug, day: item.day,
+          expires_at: new Date(now.getTime() + TOKEN_HOURS * 3600000).toISOString(),
+        }));
+        item.payload = { ...item.payload, token, act: actUrl };
+      } catch {
+        total.failed++;
+      }
       await Promise.all(subs.filter((d) => d.user_id === item.user_id).map(async (device) => {
         try {
           const status = await sendPush(device, item.payload, vapid);

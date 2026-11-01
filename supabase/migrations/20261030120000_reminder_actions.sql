@@ -29,7 +29,8 @@ alter table public.push_log
 
 -- ---------- Using a token ----------
 
--- Returns 'done', 'later', or 'gone' (unknown, used, expired, or the habit no longer exists).
+-- Returns 'done', 'later', 'last' (Later on the third send: nothing more is queued), or 'gone'
+-- (unknown, used, expired, or the habit no longer exists).
 -- The token is marked used first, in the same statement that checks it, so two presses can't both
 -- act. A Done for a habit removed since the reminder went out changes nothing.
 create function public.act_on_reminder(p_hash text, p_act text)
@@ -55,6 +56,7 @@ begin
 
   update public.push_log set remind_again_at = now()
     where user_id = r.user_id and kind = 'remind' and slug = r.slug and day = r.day and sends < 3;
+  if not found then return 'last'; end if;
   return 'later';
 end $$;
 

@@ -253,6 +253,12 @@ without JWT checks.
   - logs the action and result, never the token or anything about the person.
 - **Later can't loop:** at most three sends of a reminder, and re-sends count towards the daily cap
   of 30.
+- **Review (1 Nov), fixed before merging:**
+  - `act-reminder` now reads at most 512 bytes of a body instead of reading it all before checking.
+  - A token that can't be saved no longer stops the sender's run: that reminder goes out without
+    buttons and the rest carry on.
+  - The service worker checks the token and address again when a button is pressed.
+  - Later on the third send says it was the last, instead of silently doing nothing.
 - **The service worker** shows the buttons only with a well-formed token and an address that is a
   Supabase function called `act-reminder`; the CSP's `connect-src` allows only our project anyway.
 - **Tests:**

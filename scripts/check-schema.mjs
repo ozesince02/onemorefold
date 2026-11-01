@@ -151,7 +151,7 @@ await rejects(db.query('select public.act_on_reminder($1, $2)', [hashOf(5), 'del
 assert.equal(await act(5, 'done'), 'done', 'and a refused action leaves the token usable');
 await db.query(`update public.push_log set remind_again_at = null, sends = 3 where user_id = $1 and slug = 'german'`, [A]);
 await addToken(6, 'german', '2026-10-28');
-assert.equal(await act(6, 'later'), 'later');
+assert.equal(await act(6, 'later'), 'last', 'Later on the third send says it was the last');
 assert.equal((await db.query(`select remind_again_at from public.push_log where user_id = $1 and slug = 'german'`, [A])).rows[0].remind_again_at, null, 'Later stops after three sends of the same reminder');
 const badActions = [
   [`insert into public.push_actions (token_hash, user_id, slug, day, expires_at) values ('not-hex', $1, 'german', '2026-10-28', now() + interval '1 day')`, 'token hashes are hex'],

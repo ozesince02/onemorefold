@@ -16,6 +16,7 @@ async function trackerTab() {
 // away; if the account can't be reached, a second notification says so.
 async function actOnAccount(act, { habitId, date, token, act: url }) {
   let result = 'failed';
+  if (!TOKEN.test(token || '') || !ACT_URL.test(url || '')) return;
   try {
     const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, act }) });
     result = (await res.json()).result;
@@ -23,8 +24,12 @@ async function actOnAccount(act, { habitId, date, token, act: url }) {
   const tab = await trackerTab();
   if (result === 'done' && tab) tab.postMessage({ type: 'eightfold-remind', act: 'done', habitId, date });
   if (result === 'done' || result === 'later') return;
-  await self.registration.showNotification(result === 'gone' ? 'That reminder has passed' : "That didn't reach your account", {
-    body: 'Open One More Fold to tick it there.',
+  const words = {
+    last: ['No more reminders for this one today', "That was its third time. It's still there to tick in One More Fold."],
+    gone: ['That reminder has passed', 'Open One More Fold to tick it there.'],
+  }[result] || ["That didn't reach your account", 'Open One More Fold to tick it there.'];
+  await self.registration.showNotification(words[0], {
+    body: words[1],
     tag: `${date}:${habitId}:act`,
     icon: '/icon-192.png',
     badge: '/badge-96.png',
