@@ -2,19 +2,20 @@
   "name": "onemorefold",
   "private": true,
   "license": "MIT",
-  "version": "0.12.1",
+  "version": "0.13.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "node scripts/check-stats.mjs && node scripts/check-reminders.mjs && node scripts/check-story.mjs && node scripts/check-security.mjs && node scripts/check-themes.mjs && node scripts/check-backup.mjs && node scripts/check-schedules.mjs && node scripts/check-years.mjs && node scripts/check-schema.mjs && node scripts/check-sync.mjs && node scripts/check-push.mjs",
+    "check": "node scripts/check-stats.mjs && node scripts/check-reminders.mjs && node scripts/check-story.mjs && node scripts/check-security.mjs && node scripts/check-themes.mjs && node scripts/check-backup.mjs && node scripts/check-schedules.mjs && node scripts/check-years.mjs && node scripts/check-schema.mjs && node scripts/check-sync.mjs && node scripts/check-push.mjs && node scripts/check-bulletin.mjs",
     "serve:dist": "node scripts/serve-dist.mjs",
     "images": "node scripts/resize-images.mjs",
     "icons": "node scripts/make-icons.mjs",
     "shared": "node scripts/copy-shared.mjs",
     "vapid": "node scripts/make-vapid-keys.mjs",
-    "deploy:preview": "node scripts/deploy-preview.mjs"
+    "deploy:preview": "node scripts/deploy-preview.mjs",
+    "og": "node scripts/make-og.mjs"
   },
   "dependencies": {
     "@fontsource/dela-gothic-one": "5.3.0",

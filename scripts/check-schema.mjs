@@ -126,6 +126,42 @@ for (const [sql, params, what] of badPush) {
 }
 await rejects(as(B, `insert into public.push_settings (user_id) values ($1)`, [A]), /row-level security|duplicate/, "B can't write A's settings");
 
+// Done and Later on closed-app reminders (D-039): one-time tokens, used only by the service role.
+const hashOf = (n) => n.toString(16).padStart(64, '0');
+const addToken = (n, slug, day, extra = '') => db.query(`insert into public.push_actions (token_hash, user_id, slug, day, expires_at${extra ? ', created_at' : ''}) values ($1, $2, $3, $4, ${extra || "now() + interval '1 day'"}${extra ? ", now() - interval '3 days'" : ''})`, [hashOf(n), A, slug, day]);
+const act = async (n, what) => (await db.query('select public.act_on_reminder($1, $2) as r', [hashOf(n), what])).rows[0].r;
+await db.query(`insert into public.push_log (user_id, kind, slug, day) values ($1, 'remind', 'german', '2026-10-28')`, [A]);
+await addToken(1, 'german', '2026-10-28');
+await rejects(as(A, 'select * from public.push_actions'), /permission denied/, 'tokens are for the server only');
+await rejects(as(A, 'select public.act_on_reminder($1, $2)', [hashOf(1), 'done']), /permission denied/, "a signed-in person can't call act_on_reminder");
+await rejects(as('anon', 'select public.act_on_reminder($1, $2)', [hashOf(1), 'done']), /permission denied/, "nor can a visitor");
+assert.equal(await act(1, 'done'), 'done', 'Done with a fresh token');
+assert.equal((await db.query(`select count(*)::int as n from public.ticks where user_id = $1 and slug = 'german' and day = '2026-10-28'`, [A])).rows[0].n, 1, 'Done ticks the habit for that day');
+assert.equal(await act(1, 'done'), 'gone', 'a token works once');
+assert.equal(await act(999, 'done'), 'gone', 'an unknown token does nothing');
+await addToken(2, 'german', '2026-10-28');
+assert.equal(await act(2, 'later'), 'later', 'Later with a fresh token');
+assert.ok((await db.query(`select remind_again_at from public.push_log where user_id = $1 and slug = 'german' and day = '2026-10-28'`, [A])).rows[0].remind_again_at, 'Later queues the reminder again');
+await addToken(3, 'german', '2026-10-27', "now() - interval '2 days'");
+assert.equal(await act(3, 'done'), 'gone', 'an expired token does nothing');
+await addToken(4, 'ghost', '2026-10-28');
+assert.equal(await act(4, 'done'), 'gone', 'Done for a habit that no longer exists changes nothing');
+await addToken(5, 'german', '2026-10-28');
+await rejects(db.query('select public.act_on_reminder($1, $2)', [hashOf(5), 'delete']), /unknown action/, 'only Done and Later');
+assert.equal(await act(5, 'done'), 'done', 'and a refused action leaves the token usable');
+await db.query(`update public.push_log set remind_again_at = null, sends = 3 where user_id = $1 and slug = 'german'`, [A]);
+await addToken(6, 'german', '2026-10-28');
+assert.equal(await act(6, 'later'), 'last', 'Later on the third send says it was the last');
+assert.equal((await db.query(`select remind_again_at from public.push_log where user_id = $1 and slug = 'german'`, [A])).rows[0].remind_again_at, null, 'Later stops after three sends of the same reminder');
+const badActions = [
+  [`insert into public.push_actions (token_hash, user_id, slug, day, expires_at) values ('not-hex', $1, 'german', '2026-10-28', now() + interval '1 day')`, 'token hashes are hex'],
+  [`insert into public.push_actions (token_hash, user_id, slug, day, expires_at) values ($2, $1, 'german', '2026-10-28', now() + interval '9 days')`, 'tokens live two days at most'],
+  [`update public.push_log set sends = 4 where user_id = $1`, 'at most three sends'],
+];
+for (const [sql, what] of badActions) {
+  await rejects(db.query(sql, sql.includes('$2') ? [A, hashOf(77)] : [A]), /violates|constraint/, `refused: ${what}`);
+}
+
 // Removing a habit from a month removes its ticks; deleting the account removes everything.
 await as(A, `delete from public.habit_months where slug = 'dsa' and month = '2026-10-01'`);
 assert.equal((await as(A, `select count(*)::int as n from public.ticks where slug = 'dsa'`)).rows[0].n, 0, 'ticks go with their habit month');
@@ -137,7 +173,7 @@ assert.equal((await db.query(`select count(*)::int as n from auth.users where id
 assert.ok((await db.query(`select count(*)::int as n from public.ticks where user_id = '${A}'`)).rows[0].n > 0, "A's ticks are untouched");
 await as(A, 'select public.delete_my_account()');
 assert.equal((await db.query(`select count(*)::int as n from public.profiles where id = '${A}'`)).rows[0].n, 0, 'account deletion clears the profile');
-for (const t of ['years', 'habits', 'months', 'habit_months', 'ticks', 'push_settings', 'push_subscriptions', 'push_log']) {
+for (const t of ['years', 'habits', 'months', 'habit_months', 'ticks', 'push_settings', 'push_subscriptions', 'push_log', 'push_actions']) {
   assert.equal((await db.query(`select count(*)::int as n from public.${t} where user_id = '${A}'`)).rows[0].n, 0, `account deletion clears ${t}`);
 }
 await rejects(as(A, `insert into public.years (user_id, year) values ($1, 2027)`, [A]), /foreign key/, "a deleted account can't write again with its old token");

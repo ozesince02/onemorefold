@@ -7,6 +7,19 @@
 
 export const PATCHES = [
   {
+    version: '0.13',
+    date: '2026-11-01',
+    title: 'Done, from the notification',
+    sticker: 'ポチッ',
+    notes: [
+      ['Done, without opening anything.', 'A reminder that arrives with the app closed now has a Done button. Tap it and the habit is folded, straight from the notification. Your thumb will thank you.'],
+      ['Later, for when it really is later.', "Tap Later and the reminder comes back on the next round, up to three times, unless you've done it by then. It won't nag past that; it has manners."],
+      ['iPhone and iPad', "don't show buttons on web notifications yet, so there a tap still opens the app. We're as disappointed as you are."],
+      ['A curtain at the door.', 'The front page now hangs a little noren saying what was always true: free for everyone, no ads, no tracking. Close it if you like; it only comes back with news.'],
+      ['Nicer links.', 'Share onemorefold.com and it now arrives as a proper paper card, crane and all, instead of a sad grey box.'],
+    ],
+  },
+  {
     version: '0.12',
     date: '2026-10-30',
     title: 'One more fold',
@@ -148,7 +161,6 @@ export const PATCHES = [
 
 // What's being folded next (see docs/buddies-and-notifications.md). Promises, not dates.
 export const NEXT = [
-  'Done and Later, right on the reminder',
   'A daily summary and a weekly recap',
   'Buddies, with user tags like oze#1000',
   'Buddy and gang challenges: one habit, up to ten people',

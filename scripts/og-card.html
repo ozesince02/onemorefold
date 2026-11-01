@@ -1,0 +1,41 @@
+<!doctype html>
+<!-- The link preview card (D-040): drawn here in the site's own fonts, then rendered to
+     public/og.png at 1200×630 by scripts/make-og.mjs. Never deployed; the light paper always. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>og card</title>
+  <link rel="stylesheet" href="/src/styles/fonts.css">
+  <style>
+    html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; }
+    body { background: #E6E5E1; font-family: 'Zen Maru Gothic', sans-serif; color: #1E1B18; position: relative; }
+    .sky { position: absolute; right: 60px; top: 52px; width: 470px; height: 470px; background: #A9CBD6; transform: rotate(-2deg);
+      clip-path: polygon(0 3%, 9% 0, 22% 2%, 37% 0, 52% 3%, 66% 0, 81% 2%, 100% 0, 98% 14%, 100% 31%, 97% 48%, 100% 66%, 98% 83%, 100% 100%, 84% 97%, 68% 100%, 51% 98%, 34% 100%, 17% 97%, 0 100%, 2% 82%, 0 64%, 3% 46%, 0 29%, 2% 14%); }
+    .sun { position: absolute; right: 290px; top: 110px; width: 150px; height: 150px; border-radius: 50%; background: #C8302C; }
+    .crane { position: absolute; right: 120px; top: 230px; width: 330px; transform: rotate(-6deg); }
+    .tape { position: absolute; right: 250px; top: 36px; width: 150px; height: 38px; background: rgba(233, 214, 170, .85); transform: rotate(4deg); }
+    .copy { position: absolute; left: 76px; top: 92px; width: 560px; }
+    h1 { font-family: 'Dela Gothic One', sans-serif; font-weight: 400; font-size: 92px; line-height: .98; letter-spacing: -.03em; margin: 0; }
+    .line { font-family: 'Dela Gothic One', sans-serif; font-size: 34px; margin: 26px 0 0; color: #C8302C; letter-spacing: -.01em; }
+    .sub { font-size: 26px; font-weight: 700; line-height: 1.4; margin: 22px 0 0; color: #4A453F; }
+    .free { display: inline-block; margin-top: 30px; background: #24496B; color: #FAF9F6; font-weight: 700; font-size: 22px; padding: 10px 20px; border-radius: 999px; }
+    .url { position: absolute; left: 76px; bottom: 44px; font-weight: 700; font-size: 22px; color: #776F65; }
+  </style>
+</head>
+<body>
+  <div class="sky"></div>
+  <span class="tape"></span>
+  <div class="sun"></div>
+  <svg class="crane" viewBox="0 0 64 48" aria-hidden="true">
+    <path d="M22 34 L5 13 L29 31 Z" fill="#1E1B18"/><path d="M41 34 L56 9 L35 31 Z" fill="#1E1B18"/><path d="M56 9 L63 15 L55 13 Z" fill="#1E1B18"/>
+    <path d="M19 34 L32 41 L45 34 L32 29 Z" fill="#C8302C"/><path d="M25 31 L35 1 L40 31 Z" fill="#C8302C"/><path d="M33 31 L35 1 L40 31 Z" fill="#1E1B18" fill-opacity=".22"/>
+  </svg>
+  <div class="copy">
+    <h1>One More<br>Fold</h1>
+    <p class="line">Fall seven, rise eight.</p>
+    <p class="sub">A paper-craft habit tracker. Tick a habit and it becomes a fold; a thousand folds make a wish.</p>
+    <span class="free">Free · no ads · no tracking</span>
+  </div>
+  <p class="url">onemorefold.com</p>
+</body>
+</html>

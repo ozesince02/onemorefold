@@ -3,7 +3,7 @@
 // lib/ holds exact copies of the app's own modules (npm run shared), so the sender and the tracker
 // agree on what "due" means.
 import { rowsToState } from './lib/sync/rows.js';
-import { upcomingReminders, pushText } from './lib/reminders-core.js';
+import { upcomingReminders, stillDue, pushText } from './lib/reminders-core.js';
 import { wallClock, pad } from './lib/dates.js';
 
 export const DAILY_CAP = 30; // notifications a person can get in a day, whatever happens
@@ -20,7 +20,9 @@ export function clocks(settings, now) {
 }
 
 // people: from clocks(). habitMonths and ticks: rows for those people and months. sent: today's
-// push_log rows. Returns [{ user_id, slug, day, payload }], at most DAILY_CAP a person a day.
+// push_log rows (with remind_again_at, from Later). Returns [{ user_id, slug, day, again, payload }]:
+// new reminders, and again: true for ones queued by Later that are still due. At most DAILY_CAP a
+// person a day, counting both.
 export function planReminders({ people, habitMonths, ticks, sent }) {
   const out = [];
   for (const p of people) {
@@ -40,19 +42,29 @@ function planOne(p, habitMonths, ticks, sent) {
   if (!tables.habit_months.length) return out;
   const state = rowsToState(tables);
   const already = sent.filter((r) => r.user_id === p.user_id && r.day === p.day);
-  let room = DAILY_CAP - already.length;
+  let room = DAILY_CAP - already.reduce((n, r) => n + (r.sends || 1), 0);
   const off = Object.fromEntries(p.off.map((slug) => [slug, true]));
+  const message = (habit, again) => ({
+    user_id: p.user_id,
+    slug: habit.id,
+    day: p.day,
+    again,
+    // What the service worker shows. Encrypted for each device; only that browser reads it.
+    payload: { ...pushText(habit, { again }), tag: `${p.day}:${habit.id}`, habitId: habit.id, date: p.day },
+  });
+  // Later (D-039): sent again if it's still due and not ticked; otherwise it quietly lapses.
+  const queued = new Set(already.filter((r) => r.remind_again_at).map((r) => r.slug));
+  for (const habit of stillDue(state, p.clock, off)) {
+    if (room <= 0) break;
+    if (!queued.has(habit.id)) continue;
+    room--;
+    out.push(message(habit, true));
+  }
   for (const habit of upcomingReminders(state, p.clock, off)) {
     if (room <= 0) break;
     if (already.some((r) => r.slug === habit.id)) continue;
     room--;
-    out.push({
-      user_id: p.user_id,
-      slug: habit.id,
-      day: p.day,
-      // What the service worker shows. Encrypted for each device; only that browser reads it.
-      payload: { ...pushText(habit), tag: `${p.day}:${habit.id}`, habitId: habit.id, date: p.day },
-    });
+    out.push(message(habit, false));
   }
   return out;
 }
