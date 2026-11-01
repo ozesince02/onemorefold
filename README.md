@@ -84,6 +84,7 @@ That's enough for most work.
 | `src/lib/` | The logic, all plain functions: `store.js` (data), `stats.js` (every number), `schedule.js`, `reminders-core.js`, `sanitize.js` (validation and `esc()`), `sync/` (sync engine), `auth.js`, `push.js` |
 | `src/ui/` | Paper pieces: torn edges, charts, the account menu, the crane story scroll, crane notes, reminders |
 | `src/three/` | The Three.js crane that folds from a flat square |
+| `src/data/bulletin.js` | The noren: the notice under the landing header. Edit it to change or take down the message |
 | `src/data/` | oze's own log for the landing page's story (`story.js`), an invented year for the checks (`sample.js`), the demo habits, the patch notes and the crane notes' text |
 | `src/styles/` | CSS, with every colour a role token in `tokens.css` |
 | `public/` | Static files: the service worker, icons, `_headers` (security headers and CSP) |

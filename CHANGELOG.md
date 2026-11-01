@@ -10,6 +10,11 @@ Dates are when the work landed.
   has two buttons: Done ticks the habit for today without opening anything, and Later sends the
   reminder once more on the next round (up to three times) if it isn't done by then. Not on
   iPhone and iPad, where Safari doesn't show buttons on notifications: tap to open instead. (D-039)
+- **A noren on the front page:** a little shop curtain under the header saying One More Fold is
+  free for everyone, with no ads and no tracking. Close it with ✕; it comes back only when there's
+  a new message. It can carry other news later. (D-040)
+- **Link previews:** sharing onemorefold.com on X, LinkedIn, WhatsApp or Slack now shows a paper
+  card with the crane, the name and "Free · no ads · no tracking". (D-040)
 
 ## 0.12.1 — 30 October 2026
 

@@ -434,3 +434,47 @@ section { scroll-margin-top: 24px; }
 @media (max-width: 359px) {
   .wordmark-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }
+
+/* ---------- The noren (D-040) ----------
+   A shop curtain hanging under the header: indigo cloth in strips from a rod, with a short notice
+   from src/data/bulletin.js. It sways once as the page opens, like cloth someone has just walked
+   past, and lifts away when closed. On phones the strips become one strip. */
+.noren-slot { max-width: var(--max); margin: 0 auto; padding: 0 var(--gutter); }
+.noren { position: relative; max-width: 760px; margin: 0 auto 8px; transform-origin: 50% 0; animation: noren-sway 1.8s var(--ease-out) .3s both; }
+.noren-rod { display: block; height: 8px; margin: 0 -14px; border-radius: 4px; background: var(--kraft); box-shadow: inset 0 -2px 0 rgb(var(--shadow) / .25); }
+.noren-cloth { list-style: none; margin: 0 0 8px; padding: 0; display: flex; gap: 5px; }
+.noren-panel {
+  flex: 1 1 0; min-width: 0; padding: 14px 12px 20px; text-align: center;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--ai); color: var(--on-color);
+  font-family: var(--display); font-size: clamp(15px, 1.6vw, 19px); line-height: 1.2; letter-spacing: -.01em;
+  border-radius: 0 0 3px 3px;
+}
+/* Every strip as long as the longest; the middle one hangs a little lower, like a noren's centre cloth. */
+.noren-panel:nth-child(2) { margin-bottom: -8px; }
+.noren-foot { display: flex; justify-content: flex-end; align-items: center; gap: 14px; margin-top: 6px; }
+.noren-link { color: var(--link); font-weight: 700; font-size: 14px; text-underline-offset: 3px; }
+.noren-x {
+  width: 32px; height: 32px; border: 0; border-radius: 50%; background: transparent;
+  color: var(--ink-2); font-size: 14px; cursor: pointer;
+}
+.noren-x:hover { background: var(--bg-2); color: var(--ink); }
+.noren-link:focus-visible, .noren-x:focus-visible { outline: 3px solid var(--link); outline-offset: 2px; }
+.noren.is-lifting { animation: noren-lift .4s var(--ease-out) both; }
+
+@keyframes noren-sway {
+  0% { transform: rotate(0) skewX(0); }
+  20% { transform: rotate(.9deg) skewX(-1.5deg); }
+  45% { transform: rotate(-.6deg) skewX(1deg); }
+  70% { transform: rotate(.25deg) skewX(-.4deg); }
+  100% { transform: none; }
+}
+@keyframes noren-lift { to { opacity: 0; transform: translateY(-14px) scaleY(.6); } }
+
+@media (max-width: 600px) {
+  .noren-cloth { display: block; margin-bottom: 0; background: var(--ai); color: var(--on-color); border-radius: 0 0 3px 3px; padding: 12px 14px 16px; text-align: center; }
+  .noren-panel, .noren-panel:nth-child(2) { display: inline; padding: 0; margin: 0; background: none; font-size: 15px; }
+  .noren-panel + .noren-panel::before { content: ' · '; }
+  .noren-rod { margin: 0 -8px; }
+}
+@media (prefers-reduced-motion: reduce) { .noren, .noren.is-lifting { animation: none; } }

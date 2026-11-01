@@ -740,3 +740,28 @@ Accepted · 1 Nov 2026 · plan: [buddies-and-notifications.md](buddies-and-notif
     or every few minutes), not instantly. The server doesn't broadcast it.
   - **The 30-minute job:** Later waits for the next run, so it means "within half an hour".
 
+## D-040 The noren (site notices) and link previews
+Accepted · 1 Nov 2026
+
+- **Context:** One More Fold is free, with no ads or tracking, but newcomers didn't learn that from
+  the front page. The owner wanted a notice that sits apart from the page's story, can be changed
+  or taken down later, and fits the paper style rather than a sale banner.
+- **Decision: a noren.** A shop curtain hangs under the landing page's header. A noren out front
+  means "we're open", and shops change it for seasons and occasions, which is what this is for.
+  - **Settings:** everything lives in `src/data/bulletin.js`: on or off, an id, an optional last
+    day, one to four short phrases (one per strip), and an optional link to one of the site's own
+    pages (named, never an address).
+  - **Closing:** the ✕ hides it on that device for that id only, so a new message (new id) hangs
+    again. It's stored under `eightfold:v1:`, so "remove my folds" clears it too.
+  - **Movement:** it sways once as the page opens; on phones the strips join into one.
+  - **Safety:** the text is written in the code and escaped when shown.
+  - First message: free for everyone, no ads, no tracking, built for the community.
+- **Link previews:** `public/og.png` is a 1200×630 card (the crane under the red sun, the name,
+  "Fall seven, rise eight", "Free · no ads · no tracking").
+  - **How it's made:** drawn in `scripts/og-card.html` with the site's own fonts and rendered by
+    `npm run og` (headless Edge or Chrome, with the dev server running).
+  - **Tags:** every public page has Open Graph tags, `twitter:card` `summary_large_image` and a
+    canonical address. `check-security.mjs` checks the card is named, on our own domain.
+  - **Wording:** the homepage description now says "free" and "no ads, no tracking", since it's
+    the text under the card.
+
