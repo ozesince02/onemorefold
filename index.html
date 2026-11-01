@@ -4,7 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>One More Fold — fall seven, rise eight</title>
-  <meta name="description" content="A paper-craft habit tracker for the eighth try. Fall seven times, rise eight: tick a habit and it becomes a fold; a thousand folds make a wish.">
+  <meta name="description" content="A free paper-craft habit tracker, built for the community: no ads, no tracking. Fall seven times, rise eight: tick a habit and it becomes a fold; a thousand folds make a wish.">
+  <!-- Link previews on X, LinkedIn, WhatsApp, Slack (D-040). The card is public/og.png (npm run og). -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="One More Fold">
+  <meta property="og:title" content="One More Fold — fall seven, rise eight">
+  <meta property="og:description" content="A free paper-craft habit tracker, built for the community: no ads, no tracking. Fall seven times, rise eight: tick a habit and it becomes a fold; a thousand folds make a wish.">
+  <meta property="og:url" content="https://onemorefold.com/">
+  <meta property="og:image" content="https://onemorefold.com/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="One More Fold: a paper crane under a red sun. Fall seven, rise eight. Free, no ads, no tracking.">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://onemorefold.com/">
   <meta name="theme-color" content="#E6E5E1">
   <script src="/theme.js"></script>
   <script src="/boot.js"></script>
@@ -30,6 +42,8 @@
     <a class="btn bar-cta" href="app.html">Open <span class="cta-the">the </span>tracker</a>
     <div data-account></div>
   </header>
+  <!-- The noren (D-040): a notice under the header, from src/data/bulletin.js. Not part of the page. -->
+  <div class="noren-slot" data-bulletin></div>
 
   <main>
     <!-- HERO: the live thing. Tick these six habits and the square folds into a crane. -->

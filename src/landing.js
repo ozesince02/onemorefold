@@ -15,10 +15,12 @@ import { DEMO_HABITS, STORY_ALIASES } from './data/demo.js';
 import { createAccountMenu } from './ui/account-menu.js';
 import { startAuth } from './lib/auth.js';
 import { watchTheme } from './lib/theme.js';
+import { hangBulletin } from './ui/bulletin.js';
 
 gsap.registerPlugin(ScrollTrigger);
 window.__oz = true;
 watchTheme();
+hangBulletin(document.querySelector('[data-bulletin]'));
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];

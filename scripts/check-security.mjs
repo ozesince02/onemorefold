@@ -108,5 +108,10 @@ for (const page of ['index.html', 'app.html', 'privacy.html', 'terms.html', 'pat
   const html = readFileSync(new URL(`../${page}`, import.meta.url), 'utf8');
   assert.doesNotMatch(html, /fonts\.googleapis|fonts\.gstatic/, `${page} doesn't load Google Fonts`);
   assert.match(html, /\/src\/styles\/fonts\.css/, `${page} uses the self-hosted fonts`);
+  // Link previews (D-040): every public page names the card, on our own domain only.
+  if (page !== '404.html') {
+    assert.match(html, /<meta property="og:image" content="https:\/\/onemorefold\.com\/og\.png">/, `${page} has the link preview card`);
+    assert.match(html, /<meta name="twitter:card" content="summary_large_image">/, `${page} asks X for the large card`);
+  }
 }
 console.log('fonts: self-hosted only');

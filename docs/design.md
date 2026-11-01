@@ -152,6 +152,16 @@ Shadows are allowed **only** on paper lying on paper. Buttons and controls are f
 - **Backup slip** (`.backup-bar`): a yamabuki strip with notched ends above the month board, only
   when a backup is due and data is local. One primary (sumi) button and a text link to snooze.
 
+## The noren (D-040)
+
+- **What it is:** an indigo (`--ai`) cloth in up to four strips under the landing header, hanging
+  from a kraft rod. The centre strip is a little longer; text in the display face on `--on-color`.
+- **Words:** one short phrase per strip, about 24 characters. It's for notices, never for content
+  that belongs in the page.
+- **Motion:** one sway as the page opens, and it lifts away when closed. None with reduced motion.
+- **Phones:** below 600px the strips join into one, with phrases separated by middots.
+- Edit `src/data/bulletin.js` to change or take it down; change `id` with the message.
+
 ## Crane notes (D-031)
 
 - **When:** a feature that deserves a word from the maker (why it exists, what it's for) gets a
