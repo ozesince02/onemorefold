@@ -785,7 +785,7 @@ function closedAppReminders() {
   } else if (needsHomeScreen()) {
     body = '<p class="note">On iPhone and iPad, reminders reach One More Fold only from the Home Screen. In Safari, tap Share, then Add to Home Screen, open One More Fold from there and turn this on.</p>';
   } else if (ui.push === 'on') {
-    body = `<p class="note">On for this device. Each reminder arrives up to 30 minutes before its habit's time, even with One More Fold closed, for the habits ticked below.</p>
+    body = `<p class="note">On for this device. Each reminder arrives up to 30 minutes before its habit's time, even with One More Fold closed, for the habits ticked below. Tap Done on it to fold the habit, or Later to hear about it again (not on iPhone and iPad).</p>
       <div class="backup-actions"><button class="btn btn--quiet" type="button" data-push="off">Turn off on this device</button></div>`;
   } else if (ui.push === 'denied') {
     body = '<p class="note">Notifications are blocked for this site. Allow them in the browser\'s site settings, then come back here.</p>';

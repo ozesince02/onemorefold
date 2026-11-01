@@ -67,6 +67,28 @@ or in your own dashboard: no secret ever goes into git, chat or the site.
    D-035). Add the same name and value as a build variable in Cloudflare (Workers Builds) and as a
    GitHub repository variable; the setting appears on the site after the next deploy.
 
+## Adding Done and Later (D-039, after the steps above)
+
+Reminders already work without this; it adds the two buttons. In order:
+
+1. **Run the tables:** SQL Editor → paste `supabase/migrations/20261030120000_reminder_actions.sql`
+   → Run. It adds the one-time tokens and Later; nothing existing changes.
+2. **Deploy the new function** (it needs no secrets of its own; Supabase provides the two it reads):
+
+   ```bash
+   npx supabase functions deploy act-reminder --no-verify-jwt --use-api --project-ref txmseoofjrvsmxyaiwps
+   ```
+
+3. **Redeploy the sender,** so its reminders carry the tokens:
+
+   ```bash
+   npx supabase functions deploy send-reminders --no-verify-jwt --use-api --project-ref txmseoofjrvsmxyaiwps
+   ```
+
+Do them in this order: a sender with tokens before the table exists would fail its runs until the
+SQL is in. The site's part (the service worker) ships with the release; until then reminders just
+have no buttons.
+
 ## Checking it works
 
 - Supabase → Edge Functions → `send-reminders` → Logs: every half hour a line like

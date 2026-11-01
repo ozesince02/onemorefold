@@ -3,6 +3,14 @@
 What changed, for people using the app. Why it changed lives in [docs/decisions.md](docs/decisions.md).
 Dates are when the work landed.
 
+## Unreleased
+
+### Added
+- **Done and Later, right on the reminder.** A reminder that arrives with One More Fold closed now
+  has two buttons: Done ticks the habit for today without opening anything, and Later sends the
+  reminder once more on the next round (up to three times) if it isn't done by then. Not on
+  iPhone and iPad, where Safari doesn't show buttons on notifications: tap to open instead. (D-039)
+
 ## 0.12.1 — 30 October 2026
 
 ### Fixed

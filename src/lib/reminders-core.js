@@ -70,8 +70,14 @@ export function upcomingReminders(state, date, off = {}) {
 }
 
 // What the notification says. It may arrive up to half an hour early, so it names the time.
-export function pushText(habit) {
+export function pushText(habit, { again = false } = {}) {
   const unit = unitOf(habit);
   const when = unit === 'day' ? '' : ` Any day this ${unit} counts.`;
+  if (again) return { title: `${habit.name} · ${habit.time}`, body: `Still to do: ${habit.name}. There's still time${unit === 'day' ? ' today' : ` this ${unit}`}.` };
   return { title: `${habit.name} · ${habit.time}`, body: `Next up: ${habit.name} at ${habit.time}.${when}` };
+}
+
+// Habits someone asked to hear about again (Later, D-039): only those still due and not ticked.
+export function stillDue(state, date, off = {}) {
+  return candidates({ ...state, reminders: { ...DEFAULTS, enabled: true, off } }, date);
 }

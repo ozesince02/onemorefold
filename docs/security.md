@@ -234,6 +234,39 @@ holds on every branch.
 - **Closed-app reminders verified end to end** by the owner on the live site: the half-hourly
   `send-reminders` runs log as expected, and a reminder arrived with Eightfold closed (D-028).
 
+### 1 November 2026 — Done and Later on closed-app reminders (branch `feature/reminder-actions`)
+
+New input: a one-time token posted by the service worker to `act-reminder`, a function that runs
+without JWT checks.
+- **The token is the permission, and a small one:**
+  - 32 random bytes; only its SHA-256 is stored, in `push_actions`, which has no policies and no
+    grants;
+  - single use: `act_on_reminder()` marks it used in the same statement that finds it;
+  - expires after 36 hours (a database check caps it at two days);
+  - can only tick or snooze the one habit and day it was made for.
+- **`act_on_reminder()` is SECURITY DEFINER** with an empty `search_path`, callable only by the
+  service role. It refuses unknown actions before touching the token, and a Done for a habit
+  deleted since does nothing.
+- **`act-reminder`:**
+  - accepts only a well-formed token and `done` or `later`, in a body of at most 512 bytes;
+  - answers CORS only for our own origins;
+  - logs the action and result, never the token or anything about the person.
+- **Later can't loop:** at most three sends of a reminder, and re-sends count towards the daily cap
+  of 30.
+- **Review (1 Nov), fixed before merging:**
+  - `act-reminder` now reads at most 512 bytes of a body instead of reading it all before checking.
+  - A token that can't be saved no longer stops the sender's run: that reminder goes out without
+    buttons and the rest carry on.
+  - The service worker checks the token and address again when a button is pressed.
+  - Later on the third send says it was the last, instead of silently doing nothing.
+- **The service worker** shows the buttons only with a well-formed token and an address that is a
+  Supabase function called `act-reminder`; the CSP's `connect-src` allows only our project anyway.
+- **Tests:**
+  - `check-schema.mjs`: single use, expiry, unknown tokens, a deleted habit, refused actions, the
+    three-send cap, no access for people or visitors.
+  - `check-push.mjs`: re-sends, the cap, tokens, and the service worker in a sandbox (buttons only
+    for good payloads, what's posted, tab updates, failures).
+
 ### Accepted risks (owner's decision, 24 Oct 2026, D-016)
 
 - The repository is public and holds the owner's January–October 2026 habit log (names, times,
