@@ -319,7 +319,7 @@ function gridPanel(key, s, color) {
   const cols = {
     days: [
       ['Done', 'Days ticked', (h) => `<td class="sum">${h.done}</td>`],
-      ['Due', 'Due so far: days, or weeks and months for weekly and monthly habits. Today counts once it is ticked', (h) => `<td class="sum">${h.daysSoFar}</td>`],
+      ['Due', 'Still to do this month: the goal minus what is done', (h) => `<td class="sum">${Math.max(0, h.left)}</td>`],
       ['% due', 'Done against what was due so far', (h) => pctCell(h, 'days')],
     ],
     goal: [
@@ -376,7 +376,7 @@ function gridPanel(key, s, color) {
         <tfoot>${doneRow}${barRow}</tfoot>
       </table>
     </div>
-    <div class="grid-legend"><span><i style="background:var(--ai)"></i>Day's score</span><span><i style="background:var(--shu)"></i>Perfect day</span><span><i style="outline:1px solid var(--bg-3);outline-offset:-1px"></i>Still to come</span><span>% due counts today once it's ticked; dots are rest days</span>${pctView() === 'days' ? '' : '<span>Left shows +n once a goal is passed</span>'}</div>
+    <div class="grid-legend"><span><i style="background:var(--ai)"></i>Day's score</span><span><i style="background:var(--shu)"></i>Perfect day</span><span><i style="outline:1px solid var(--bg-3);outline-offset:-1px"></i>Still to come</span><span>% due counts today from the start of the day; dots are rest days</span>${pctView() === 'days' ? '' : '<span>Left shows +n once a goal is passed</span>'}</div>
   </section>`;
 }
 

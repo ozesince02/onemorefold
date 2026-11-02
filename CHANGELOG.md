@@ -3,6 +3,16 @@
 What changed, for people using the app. Why it changed lives in [docs/decisions.md](docs/decisions.md).
 Dates are when the work landed.
 
+## Unreleased
+
+### Fixed
+- **Due on the month grid now shows what's left:** the habit's goal minus what's done this month
+  (a goal of 20 with one fold shows 19). It used to show how many days had been due so far, which
+  read as almost nothing early in the month. (D-041)
+- **Days percentages count today from the start of the day.** Six daily habits on the 2nd now read
+  "7 of 12", not "7 of 8": today's unticked habits are part of what's due. A day that isn't over
+  still never breaks a run. (D-041)
+
 ## 0.13.0 — 1 November 2026
 
 ### Added

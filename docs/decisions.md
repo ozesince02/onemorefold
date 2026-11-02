@@ -63,7 +63,7 @@ Accepted · 23 Oct 2026
   against the sheet's 20-day goal. The app mixed three denominators without saying which.
 - **Decision:**
   - **Days** (default): ticks against the days so far. Today counts only once it's ticked, so an
-    unticked morning isn't a miss. Past months use every day.
+    unticked morning isn't a miss. Past months use every day. (Changed by D-041: today now counts from the start of the day.)
   - **Goal**: ticks against each habit's monthly goal, as the sheet's PROGRESS column did.
     A habit can pass 100% (January DSA was 27 against 10). In month totals each habit counts at most
     its goal, so one overachiever can't hide the rest.
@@ -164,7 +164,7 @@ Accepted · 24 Oct 2026
 - **How they count:**
   - Units follow the schedule: days, weeks, or the month.
   - Days view: done against what was due so far. The current day, week or month only counts once it's done, so it's
-    never a miss before it ends.
+    never a miss before it ends. (Changed by D-041 for days: today counts from its start.)
   - Goal view: completed units against the goal. Extra ticks in a week don't count past its target.
   - Changing a schedule resets the goal to what the schedule implies (Mon/Wed/Fri in October is 13,
     three a week is 13, once a week is 5). The goal stays editable.
@@ -765,3 +765,23 @@ Accepted · 1 Nov 2026
   - **Wording:** the homepage description now says "free" and "no ads, no tracking", since it's
     the text under the card.
 
+
+## D-041 Today is due from the start of the day; Due shows what's left
+Accepted · 2 Nov 2026 · changes part of D-006 and D-013
+
+- **Context:** on 2 November the owner had six daily habits, five done on the 1st and two so far
+  on the 2nd. This month said "7 of 8": today only joined the count once ticked (D-006), so the
+  four still open today were left out and the figure looked better than the day was going. The
+  month grid's Due column showed 1 for a habit with a goal of 20 done once, because it counted the
+  days due so far; the owner read Due as what's still to do, which is the useful number.
+- **Decision:**
+  - **Days view:** a fixed due day counts from the start of that day, ticked or not. Six daily
+    habits on the 2nd are 12 due. Days still to come stay out, unless one is ticked ahead.
+  - **Runs don't change:** an unticked today still never breaks a run until the day is over.
+  - **Weekly and monthly habits don't change:** the current week or month counts only what's done,
+    since any day in it can still do it.
+  - **Due column (Days view):** the goal minus what's done this month (completed units, as Left
+    in the Goal view), never below 0.
+- **Consequence:** early in the morning the Days figure drops, then climbs as habits are ticked.
+  October in the example year reads 58% (80 of 138) on the 23rd instead of 61%.
+- **Checks:** `scripts/check-stats.mjs` (including the owner's 2 November case).
