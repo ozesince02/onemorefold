@@ -79,9 +79,11 @@ self.addEventListener('push', (event) => {
   const date = DAY.test(msg.date || '') ? msg.date : '';
   // Done and Later appear only with a valid one-time token and our own address to send it to.
   const canAct = habitId && date && TOKEN.test(msg.token || '') && ACT_URL.test(msg.act || '');
+  // A daily summary or weekly recap (D-042) has its own tag, one per day, never a habit's.
+  const summary = msg.kind === 'daily' || msg.kind === 'weekly' ? msg.kind : '';
   event.waitUntil(self.registration.showNotification(text(msg.title, 140) || 'One More Fold', {
     body: text(msg.body, 300) || 'A habit is coming up.',
-    tag: habitId && date ? `${date}:${habitId}` : 'eightfold',
+    tag: summary && date ? `${date}:~${summary}` : habitId && date ? `${date}:${habitId}` : 'eightfold',
     renotify: true,
     icon: '/icon-192.png',
     badge: '/badge-96.png',

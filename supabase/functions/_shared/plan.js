@@ -108,7 +108,9 @@ export function planSummaries({ people, habitMonths, ticks, sent }) {
       const already = (kind) => sent.some((r) => r.user_id === p.user_id && r.kind === kind && r.day === p.day);
       const add = (kind, slug, text) => text && !already(kind) && out.push({
         user_id: p.user_id, kind, slug, day: p.day,
-        payload: { ...text, tag: `${p.day}:${slug}`, habitId: slug, date: p.day },
+        // No habit id: a summary's tag ("~daily", "~weekly") can never match a habit's, whose ids
+        // never contain "~", so it can't replace a reminder on screen.
+        payload: { ...text, kind, date: p.day },
       });
       if (due.daily) add('daily', 'summary', dailySummary(state, now, since));
       if (due.weekly) add('weekly', 'week-recap', weeklyRecap(state, now));

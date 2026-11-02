@@ -104,5 +104,5 @@ export async function leaveDevice(sb) {
 export async function disablePush(sb, userId) {
   await leaveDevice(sb);
   const { count } = await sb.from('push_subscriptions').select('id', { count: 'exact', head: true });
-  if (!count) await sb.from('push_settings').update({ reminders: false }).eq('user_id', userId);
+  if (!count) await sb.from('push_settings').update({ reminders: false, daily: false, weekly: false }).eq('user_id', userId);
 }

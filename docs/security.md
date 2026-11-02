@@ -275,6 +275,13 @@ sends only known fields and offered times. Summaries are built from the person's
 test checks someone else's habits never count), sent through the same encrypted Web Push, logged
 once a day each (`push_log` kinds widened to `daily` and `weekly`), and their text is fixed wording
 around numbers and the person's own habit names.
+- **Review (3 Nov), fixed before merging:**
+  - A summary no longer shares a notification tag with a habit (a habit named "Summary" could have
+    been replaced on screen); summaries carry a kind and get `~daily` and `~weekly` tags.
+  - Each batch's reminders and summaries fail on their own, so a database error at 21:30 can't cost
+    everyone their summary.
+  - Summaries go out ten at a time.
+  - Turning off the last device clears the summary switches too.
 
 ### Accepted risks (owner's decision, 24 Oct 2026, D-016)
 
