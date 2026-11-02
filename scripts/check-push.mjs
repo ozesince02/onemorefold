@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { encrypt, vapidHeader, sendPush, b64u, unb64u } from '../supabase/functions/_shared/webpush.js';
-import { clocks, planReminders, logCutoff, DAILY_CAP } from '../supabase/functions/_shared/plan.js';
+import { clocks, planReminders, planSummaries, summariesDue, logCutoff, DAILY_CAP } from '../supabase/functions/_shared/plan.js';
 import { makeToken, hashToken, TOKEN } from '../supabase/functions/_shared/tokens.js';
 import vm from 'node:vm';
 
@@ -132,6 +132,29 @@ assert.equal(planReminders({ people: clocks([{ user_id: A, off: ['gym'], time_zo
 assert.equal(planReminders({ people: people.slice(0, 1), habitMonths, ticks: [], sent: [{ ...laterSent[0], remind_again_at: null }] }).filter((x) => x.again).length, 0, 'only when Later was pressed');
 const busy = Array.from({ length: DAILY_CAP }, (_, i) => ({ user_id: A, slug: `h${i}`, day: '2026-10-28', sends: 1 }));
 assert.equal(planReminders({ people: people.slice(0, 1), habitMonths, ticks: [], sent: [...busy, ...laterSent] }).length, 0, 'Later counts towards the daily cap');
+
+// ---------- Daily summary and weekly recap (D-042) ----------
+// Sunday 1 November 2026, 16:00 UTC: 21:30 in Kolkata.
+const sunday = new Date(Date.UTC(2026, 10, 1, 16, 0));
+const who = (extra = {}) => clocks([{ user_id: A, off: [], time_zone: 'Asia/Kolkata', reminders: false, daily: true, weekly: true, summary_time: '21:30:00', ...extra }], sunday)[0];
+assert.deepEqual(summariesDue(who()), { daily: true, weekly: true }, 'both are due at 21:30 on a Sunday');
+assert.deepEqual(summariesDue(who({ summary_time: '20:00:00' })), { daily: false, weekly: false }, 'not at another time');
+assert.deepEqual(summariesDue(who({ weekly: false })), { daily: true, weekly: false }, 'each switch is its own');
+assert.deepEqual(summariesDue(clocks([{ user_id: A, off: [], time_zone: 'Asia/Kolkata', daily: true, weekly: true, summary_time: '21:30:00' }], new Date(Date.UTC(2026, 10, 1, 16, 17)))[0]), { daily: true, weekly: true }, 'a run that starts late still covers its half hour');
+assert.deepEqual(summariesDue(clocks([{ user_id: A, off: [], time_zone: 'Asia/Kolkata', daily: true, weekly: true, summary_time: '21:30:00' }], new Date(Date.UTC(2026, 10, 2, 16, 0)))[0]), { daily: true, weekly: false }, 'the recap only on Sundays');
+assert.deepEqual(summariesDue(clocks([{ user_id: A, off: [], time_zone: 'America/Los_Angeles', daily: true, weekly: true, summary_time: '21:30:00' }], sunday)[0]), { daily: false, weekly: false }, 'in the person\'s own time zone (09:00 in LA)');
+const sp = who();
+const shm = [hm(A, 'walk', '07:00:00', { month: '2026-11-01', name: 'Walk outside' }), hm(A, 'walk', '07:00:00', { month: '2026-10-01', name: 'Walk outside' })];
+const sticks = [{ user_id: A, slug: 'walk', day: '2026-11-01' }, ...[26, 27, 28, 29, 30, 31].map((d) => ({ user_id: A, slug: 'walk', day: `2026-10-${d}` }))];
+const summaries = planSummaries({ people: [sp], habitMonths: shm, ticks: sticks, sent: [] });
+assert.deepEqual(summaries.map((x) => x.kind), ['daily', 'weekly'], 'a summary and a recap');
+assert.equal(summaries[0].payload.title, 'Today: 1 of 1 folded', 'the summary counts today across the new month');
+assert.match(summaries[0].payload.body, /a 7-day run/, 'and the run reaches back into October');
+assert.equal(summaries[1].payload.title, 'Your week: 7 of 7 folded', 'the recap reads the last seven days across the 1st');
+assert.equal(summaries[0].payload.tag, '2026-11-01:summary', 'one summary a day replaces the last');
+assert.equal(planSummaries({ people: [sp], habitMonths: shm, ticks: sticks, sent: [{ user_id: A, kind: 'daily', day: '2026-11-01' }] }).map((x) => x.kind).join(), 'weekly', 'sent already: not again');
+assert.equal(planSummaries({ people: [sp], habitMonths: [], ticks: [], sent: [] }).length, 0, 'nothing due, nothing sent');
+assert.equal(planSummaries({ people: [sp], habitMonths: shm.map((r) => ({ ...r, user_id: B })), ticks: [], sent: [] }).length, 0, "someone else's habits never count");
 
 // ---------- One-time tokens ----------
 const t1 = makeToken(), t2 = makeToken();

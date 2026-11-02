@@ -7,6 +7,18 @@
 
 export const PATCHES = [
   {
+    version: '0.14',
+    date: '2026-11-03',
+    title: 'How did today go?',
+    sticker: 'マトメ',
+    notes: [
+      ['A daily summary.', "Switch it on under Habits, Reminders, and each evening a note tells you how the day went: what you folded, the run you've got going, and something kind. Even on the days that went sideways. Especially those."],
+      ['A Sunday recap.', 'Once a week: how many you folded, how it compares with the week before, your perfect days and the habit you were most loyal to.'],
+      ['Due means what is left.', "The Due column on the month grid now shows how many you still have to fold to reach your goal. Before, it showed something technically true and practically useless. We're sorry, Due."],
+      ['Today counts from the morning.', "Percentages now count today's habits as due from the start of the day, so \"7 of 8\" on the 2nd is now an honest \"7 of 12\". An unfinished today still never breaks a run."],
+    ],
+  },
+  {
     version: '0.13',
     date: '2026-11-01',
     title: 'Done, from the notification',
@@ -161,7 +173,6 @@ export const PATCHES = [
 
 // What's being folded next (see docs/buddies-and-notifications.md). Promises, not dates.
 export const NEXT = [
-  'A daily summary and a weekly recap',
   'Buddies, with user tags like oze#1000',
   'Buddy and gang challenges: one habit, up to ten people',
 ];

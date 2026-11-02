@@ -4,7 +4,7 @@
 import { copyFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-const SHARED = ['dates.js', 'schedule.js', 'reminders-core.js', 'sync/rows.js'];
+const SHARED = ['dates.js', 'schedule.js', 'reminders-core.js', 'stats.js', 'summaries.js', 'sync/rows.js'];
 const root = join(import.meta.dirname, '..');
 
 for (const file of SHARED) {

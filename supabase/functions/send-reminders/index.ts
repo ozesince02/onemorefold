@@ -2,7 +2,8 @@
 // each person's next half hour (in their own time zone), sends one encrypted Web Push to each of
 // their devices, and remembers what it sent so nothing goes out twice. Each reminder carries a
 // one-time token for its Done and Later buttons (D-039, act-reminder), and reminders someone put
-// off with Later are sent once more if they're still due.
+// off with Later are sent once more if they're still due. A daily summary and a Sunday recap go to
+// those who switched them on, at their chosen half hour (D-042).
 //
 // Secrets (Supabase → Edge Functions → Secrets, never in git):
 //   CRON_SECRET         the cron job sends it as "Authorization: Bearer ..."; anything else is refused
@@ -16,7 +17,7 @@
 // CRON_SECRET check below takes the place of that. It never logs habit names or addresses.
 import { createClient } from 'npm:@supabase/supabase-js@2.117.3';
 import { sendPush } from '../_shared/webpush.js';
-import { clocks, planReminders, logCutoff } from '../_shared/plan.js';
+import { clocks, planReminders, planSummaries, summariesDue, logCutoff } from '../_shared/plan.js';
 import { makeToken, hashToken, TOKEN_HOURS } from '../_shared/tokens.js';
 
 const PAGE = 1000;  // the API's most rows per request
@@ -57,9 +58,10 @@ async function run(now: Date) {
   // Where the notification's Done and Later buttons send their token (D-039).
   const actUrl = `${env('SUPABASE_URL')}/functions/v1/act-reminder`;
 
-  const settings = await all((a, b) => db.from('push_settings').select('user_id, off, time_zone')
-    .eq('reminders', true).order('user_id').range(a, b));
-  const total = { people: 0, reminders: 0, delivered: 0, gone: 0, failed: 0 };
+  // Everyone who wants reminders, a daily summary or a weekly recap (D-042).
+  const settings = await all((a, b) => db.from('push_settings').select('user_id, off, time_zone, reminders, daily, weekly, summary_time')
+    .or('reminders.eq.true,daily.eq.true,weekly.eq.true').order('user_id').range(a, b));
+  const total = { people: 0, reminders: 0, summaries: 0, delivered: 0, gone: 0, failed: 0 };
 
   // A hundred people at a time keeps every request (and its list of ids) small.
   for (let at = 0; at < settings.length; at += BATCH) {
@@ -68,6 +70,24 @@ async function run(now: Date) {
       .in('user_id', batch.map((s) => s.user_id)).order('id').range(a, b));
     const people = clocks(batch.filter((s) => subs.some((d) => d.user_id === s.user_id)), now);
     if (!people.length) continue;
+
+    // One message to each of a person's devices; addresses that are gone for good are forgotten.
+    const deliver = (item: any) => Promise.all(subs.filter((d) => d.user_id === item.user_id).map(async (device) => {
+      try {
+        const status = await sendPush(device, item.payload, vapid);
+        if (status === 404 || status === 410) {
+          total.gone++;
+          await db.from('push_subscriptions').delete().eq('id', device.id);
+        } else if (status >= 200 && status < 300) {
+          total.delivered++;
+          await db.from('push_subscriptions').update({ last_ok_at: now.toISOString() }).eq('id', device.id);
+        } else {
+          total.failed++;
+        }
+      } catch {
+        total.failed++; // includes a push service that didn't answer within sendPush's timeout
+      }
+    }));
 
     const ids = people.map((p) => p.user_id);
     const months = [...new Set(people.map((p) => p.month))];
@@ -81,7 +101,7 @@ async function run(now: Date) {
         .in('user_id', ids).in('day', days).eq('kind', 'remind').order('user_id').order('day').order('slug').range(a, b)),
     ]);
 
-    const plan = planReminders({ people, habitMonths, ticks, sent });
+    const plan = planReminders({ people: people.filter((p) => p.reminders), habitMonths, ticks, sent });
     total.people += people.length;
     total.reminders += plan.length;
     for (const item of plan) {
@@ -106,22 +126,32 @@ async function run(now: Date) {
       } catch {
         total.failed++;
       }
-      await Promise.all(subs.filter((d) => d.user_id === item.user_id).map(async (device) => {
-        try {
-          const status = await sendPush(device, item.payload, vapid);
-          if (status === 404 || status === 410) {
-            total.gone++;
-            await db.from('push_subscriptions').delete().eq('id', device.id);
-          } else if (status >= 200 && status < 300) {
-            total.delivered++;
-            await db.from('push_subscriptions').update({ last_ok_at: now.toISOString() }).eq('id', device.id);
-          } else {
-            total.failed++;
-          }
-        } catch {
-          total.failed++; // includes a push service that didn't answer within sendPush's timeout
-        }
-      }));
+      await deliver(item);
+    }
+
+    // Daily summaries and weekly recaps for those whose time is this half hour. They need every
+    // habit (timed or not) for this month and the one before, so they're read separately.
+    const summaryPeople = people.filter((p) => { const due = summariesDue(p); return due.daily || due.weekly; });
+    if (summaryPeople.length) {
+      const sIds = summaryPeople.map((p) => p.user_id);
+      const sMonths = [...new Set(summaryPeople.flatMap((p) => [p.month, p.prevMonth]))];
+      const sDays = [...new Set(summaryPeople.map((p) => p.day))];
+      const [sHabitMonths, sTicks, sSent] = await Promise.all([
+        all((a, b) => db.from('habit_months').select('user_id, slug, month, name, goal, time, start_day, cadence, weekdays, times_per_week, position')
+          .in('user_id', sIds).in('month', sMonths).order('user_id').order('month').order('slug').range(a, b)),
+        all((a, b) => db.from('ticks').select('user_id, slug, day')
+          .in('user_id', sIds).in('month', sMonths).order('user_id').order('slug').order('day').range(a, b)),
+        all((a, b) => db.from('push_log').select('user_id, kind, slug, day')
+          .in('user_id', sIds).in('day', sDays).in('kind', ['daily', 'weekly']).order('user_id').order('day').order('kind').range(a, b)),
+      ]);
+      for (const item of planSummaries({ people: summaryPeople, habitMonths: sHabitMonths, ticks: sTicks, sent: sSent })) {
+        const claimed = check(await db.from('push_log')
+          .upsert({ user_id: item.user_id, kind: item.kind, slug: item.slug, day: item.day }, { onConflict: 'user_id,kind,slug,day', ignoreDuplicates: true })
+          .select('slug')) as any[];
+        if (!claimed.length) continue;
+        total.summaries++;
+        await deliver(item);
+      }
     }
   }
   await db.from('push_log').delete().lt('day', logCutoff(now));

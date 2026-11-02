@@ -785,3 +785,27 @@ Accepted · 2 Nov 2026 · changes part of D-006 and D-013
 - **Consequence:** early in the morning the Days figure drops, then climbs as habits are ticked.
   October in the example year reads 58% (80 of 138) on the 23rd instead of 61%.
 - **Checks:** `scripts/check-stats.mjs` (including the owner's 2 November case).
+
+## D-042 A daily summary and a weekly recap, with the app closed
+Accepted · 3 Nov 2026 · plan: [buddies-and-notifications.md](buddies-and-notifications.md) §2, setup: [push-setup.md](push-setup.md)
+
+- **What they say:** `src/lib/summaries.js` works it out from the same `monthStats` and
+  `streakOf` the tracker shows, so a notification never disagrees with the app. The sender runs an
+  exact copy (`npm run shared`).
+  - **Daily:** today's "done of due" (the month grid's day: habits due today, plus flexible ones
+    ticked today), the best day-run still going, and a line chosen by how the day went. A zero day
+    gets "Fall seven, rise eight", never a list of misses. No summary on a day with nothing due.
+  - **Weekly (Sundays):**
+    - the last seven days' done of due, with the percentage saying what it counts;
+    - the week before, for comparison;
+    - perfect days, and the most-folded habit.
+- **When:** on the run whose half hour holds the person's chosen time, in their own time zone (a
+  late run still counts), once a day each, recorded in `push_log` as `daily` or `weekly`. Times are
+  on the hour or half hour (17:00 to 23:30) because the sender runs at :00 and :30; the database
+  refuses others.
+- **Where:** to every device with closed-app reminders on. Both switches live in `push_settings`
+  (off by default) and show in the Reminders panel once that device is on. A summary works even
+  with habit reminders switched off; the sender now reads anyone with any of the three on.
+- **Looking back:** the sender reads this month and the one before. A run that reaches back to the
+  start of that window is "more than" its length, rather than a number that might be short.
+

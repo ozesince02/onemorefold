@@ -267,6 +267,15 @@ without JWT checks.
   - `check-push.mjs`: re-sends, the cap, tokens, and the service worker in a sandbox (buttons only
     for good payloads, what's posted, tab updates, failures).
 
+### 3 November 2026 — daily summary and weekly recap (branch `feature/summaries`)
+
+New input: two switches and a time in `push_settings`, written by signed-in people under the
+existing "own rows only" policy. The database refuses times off the half hour, and the browser
+sends only known fields and offered times. Summaries are built from the person's own rows only (a
+test checks someone else's habits never count), sent through the same encrypted Web Push, logged
+once a day each (`push_log` kinds widened to `daily` and `weekly`), and their text is fixed wording
+around numbers and the person's own habit names.
+
 ### Accepted risks (owner's decision, 24 Oct 2026, D-016)
 
 - The repository is public and holds the owner's January–October 2026 habit log (names, times,

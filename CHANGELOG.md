@@ -5,6 +5,13 @@ Dates are when the work landed.
 
 ## Unreleased
 
+### Added
+- **A daily summary and a weekly recap, with the app closed.** Under Habits → Reminders, on a
+  device that gets reminders with One More Fold closed: a summary each evening ("Today: 4 of 6
+  folded", your best run still going, a kind word) and a recap on Sundays (the week's folds
+  against the week before, perfect days, the habit you folded most). Each is its own switch, off
+  until you turn it on, at a time you choose between 17:00 and 23:30. (D-042)
+
 ### Fixed
 - **Due on the month grid now shows what's left:** the habit's goal minus what's done this month
   (a goal of 20 with one fold shows 19). It used to show how many days had been due so far, which

@@ -96,7 +96,7 @@ on or off overall, per habit, and for the summaries. Which devices receive them 
 
 ## 2. Daily summary and weekly recap
 
-A reminder says what to do; a summary says how it went.
+**Built 3 November 2026 (D-042).** A reminder says what to do; a summary says how it went.
 
 - **Daily summary**, at a time each person picks (default 21:30): today's due habits done, for
   example "4 of 6 done today", the run that's still going, and a short line of encouragement that
