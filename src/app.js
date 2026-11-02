@@ -15,7 +15,7 @@ import { createAccountMenu } from './ui/account-menu.js';
 import { watchTheme } from './lib/theme.js';
 import { createSync, supabaseApi } from './lib/sync/engine.js';
 import { startReminders, enableReminders, disableReminders, sendTestReminder, permissionState, nextReminder, setPushHere } from './ui/reminders.js';
-import { pushSupported, needsHomeScreen, pushState, enablePush, disablePush, saveSettings } from './lib/push.js';
+import { pushSupported, needsHomeScreen, pushState, enablePush, disablePush, saveSettings, loadSummaries, saveSummaries, SUMMARY_TIMES } from './lib/push.js';
 
 watchTheme();
 const $ = (s, r = document) => r.querySelector(s);
@@ -319,7 +319,7 @@ function gridPanel(key, s, color) {
   const cols = {
     days: [
       ['Done', 'Days ticked', (h) => `<td class="sum">${h.done}</td>`],
-      ['Due', 'Due so far: days, or weeks and months for weekly and monthly habits. Today counts once it is ticked', (h) => `<td class="sum">${h.daysSoFar}</td>`],
+      ['Due', 'Still to do this month: the goal minus what is done', (h) => `<td class="sum">${Math.max(0, h.left)}</td>`],
       ['% due', 'Done against what was due so far', (h) => pctCell(h, 'days')],
     ],
     goal: [
@@ -376,7 +376,7 @@ function gridPanel(key, s, color) {
         <tfoot>${doneRow}${barRow}</tfoot>
       </table>
     </div>
-    <div class="grid-legend"><span><i style="background:var(--ai)"></i>Day's score</span><span><i style="background:var(--shu)"></i>Perfect day</span><span><i style="outline:1px solid var(--bg-3);outline-offset:-1px"></i>Still to come</span><span>% due counts today once it's ticked; dots are rest days</span>${pctView() === 'days' ? '' : '<span>Left shows +n once a goal is passed</span>'}</div>
+    <div class="grid-legend"><span><i style="background:var(--ai)"></i>Day's score</span><span><i style="background:var(--shu)"></i>Perfect day</span><span><i style="outline:1px solid var(--bg-3);outline-offset:-1px"></i>Still to come</span><span>% due counts today from the start of the day; dots are rest days</span>${pctView() === 'days' ? '' : '<span>Left shows +n once a goal is passed</span>'}</div>
   </section>`;
 }
 
@@ -750,7 +750,11 @@ function checkPush(account) {
     .then(async (sb) => {
       const state = await pushState(sb);
       setPush(state);
-      if (state === 'on') await saveSettings(sb, account.id, store.reminders().off);
+      if (state === 'on') {
+        await saveSettings(sb, account.id, store.reminders().off);
+        ui.summaries = await loadSummaries(sb);
+        scheduleRender();
+      }
     })
     .catch(() => setPush('off'));
 }
@@ -763,6 +767,7 @@ async function togglePush(on) {
     const sb = await getClient();
     if (on) {
       await enablePush(sb, account.id, store.reminders().off);
+      ui.summaries = await loadSummaries(sb).catch(() => null);
       setPush('on');
       toast('Reminders will reach this device, even with One More Fold closed.');
     } else {
@@ -786,6 +791,7 @@ function closedAppReminders() {
     body = '<p class="note">On iPhone and iPad, reminders reach One More Fold only from the Home Screen. In Safari, tap Share, then Add to Home Screen, open One More Fold from there and turn this on.</p>';
   } else if (ui.push === 'on') {
     body = `<p class="note">On for this device. Each reminder arrives up to 30 minutes before its habit's time, even with One More Fold closed, for the habits ticked below. Tap Done on it to fold the habit, or Later to hear about it again (not on iPhone and iPad).</p>
+      ${summarySettings()}
       <div class="backup-actions"><button class="btn btn--quiet" type="button" data-push="off">Turn off on this device</button></div>`;
   } else if (ui.push === 'denied') {
     body = '<p class="note">Notifications are blocked for this site. Allow them in the browser\'s site settings, then come back here.</p>';
@@ -795,6 +801,32 @@ function closedAppReminders() {
       <div class="backup-actions"><button class="btn" type="button" data-push="on" ${busy ? 'disabled' : ''}>${ui.push === 'busy' ? 'Turning on…' : 'Remind me when One More Fold is closed'}</button></div>`;
   }
   return `<div class="push-box"><h3>When One More Fold is closed</h3>${body}</div>`;
+}
+
+// The daily summary and weekly recap (D-042): saved in the account, sent to every device with
+// closed-app reminders on, at the chosen time in the person's own time zone.
+function summarySettings() {
+  const s = ui.summaries;
+  if (!s) return '';
+  return `<fieldset class="rem-list push-extra"><legend>Also send me</legend>
+      <label><input type="checkbox" data-summary="daily" ${s.daily ? 'checked' : ''}><i></i><span>A daily summary: how today went</span></label>
+      <label><input type="checkbox" data-summary="weekly" ${s.weekly ? 'checked' : ''}><i></i><span>A weekly recap, on Sundays</span></label>
+    </fieldset>
+    <label class="rem-lead">At<select data-summary-time>${SUMMARY_TIMES.map((t) => `<option value="${t}" ${s.time === t ? 'selected' : ''}>${t}</option>`).join('')}</select></label>`;
+}
+
+async function changeSummaries(patch) {
+  const before = { ...ui.summaries };
+  ui.summaries = { ...ui.summaries, ...patch };
+  scheduleRender();
+  try {
+    await saveSummaries(await getClient(), ui.account.id, patch);
+    if (patch.daily || patch.weekly) toast(`On. It arrives at ${ui.summaries.time}, even with One More Fold closed.`);
+  } catch (err) {
+    ui.summaries = before;
+    scheduleRender();
+    toast(err.message);
+  }
 }
 
 function remindersPanel(month) {
@@ -983,6 +1015,9 @@ view.addEventListener('change', (e) => {
     return toast(`${VIEW_LABELS[e.target.value]} is now your default view.`);
   }
   if (e.target.matches('[data-rem-lead]')) return store.setReminders({ lead: Number(e.target.value) });
+  const summary = e.target.closest('[data-summary]');
+  if (summary && ui.account.status === 'signed-in') return changeSummaries({ [summary.dataset.summary]: summary.checked });
+  if (e.target.matches('[data-summary-time]') && ui.account.status === 'signed-in') return changeSummaries({ time: e.target.value });
   if (e.target.matches('[data-rem-habit]')) {
     store.setHabitReminder(e.target.dataset.remHabit, e.target.checked);
     if (ui.push === 'on' && ui.account.status === 'signed-in') {

@@ -67,6 +67,19 @@ or in your own dashboard: no secret ever goes into git, chat or the site.
    D-035). Add the same name and value as a build variable in Cloudflare (Workers Builds) and as a
    GitHub repository variable; the setting appears on the site after the next deploy.
 
+## Adding the daily summary and weekly recap (D-042, after Done and Later)
+
+1. **Run the tables:** SQL Editor → paste `supabase/migrations/20261103120000_summaries.sql` → Run.
+   It adds two switches (off) and a time to everyone's settings; nothing existing changes.
+2. **Redeploy the sender:**
+
+   ```bash
+   npx supabase functions deploy send-reminders --no-verify-jwt --use-api --project-ref txmseoofjrvsmxyaiwps
+   ```
+
+SQL first: the new sender reads the new columns. The switches appear in the tracker with the
+release that carries them.
+
 ## Adding Done and Later (D-039, after the steps above)
 
 Reminders already work without this; it adds the two buttons. In order:

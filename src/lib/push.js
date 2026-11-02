@@ -70,6 +70,24 @@ export async function saveSettings(sb, userId, off, reminders) {
   if (error) throw new Error('Your reminder settings couldn\'t be saved just now.');
 }
 
+// The daily summary and weekly recap (D-042): two switches and the time they arrive.
+export const SUMMARY_TIMES = Array.from({ length: 14 }, (_, i) => `${String(17 + Math.floor(i / 2)).padStart(2, '0')}:${i % 2 ? '30' : '00'}`);
+
+export async function loadSummaries(sb) {
+  const { data } = await sb.from('push_settings').select('daily, weekly, summary_time').maybeSingle();
+  return { daily: !!data?.daily, weekly: !!data?.weekly, time: String(data?.summary_time || '21:30').slice(0, 5) };
+}
+
+// patch: { daily?, weekly?, time? }. Only known fields and the offered times are ever sent.
+export async function saveSummaries(sb, userId, patch) {
+  const row = {};
+  if (typeof patch.daily === 'boolean') row.daily = patch.daily;
+  if (typeof patch.weekly === 'boolean') row.weekly = patch.weekly;
+  if (SUMMARY_TIMES.includes(patch.time)) row.summary_time = patch.time;
+  const { error } = await sb.from('push_settings').update(row).eq('user_id', userId);
+  if (error) throw new Error("That setting couldn't be saved just now.");
+}
+
 // Takes this device off (the account keeps any other devices) and stops the browser's subscription.
 // Never throws: it runs on the way out, and leaving must always work.
 export async function leaveDevice(sb) {
@@ -86,5 +104,5 @@ export async function leaveDevice(sb) {
 export async function disablePush(sb, userId) {
   await leaveDevice(sb);
   const { count } = await sb.from('push_subscriptions').select('id', { count: 'exact', head: true });
-  if (!count) await sb.from('push_settings').update({ reminders: false }).eq('user_id', userId);
+  if (!count) await sb.from('push_settings').update({ reminders: false, daily: false, weekly: false }).eq('user_id', userId);
 }

@@ -18,7 +18,8 @@ export function monthStats(month, y, m, now) {
   const lastDay = isFuture ? 0 : isCurrent ? now.d : days;
 
   // A day is "over" once it's before today (or the month is past). Today is not over, so an
-  // unticked today is never counted as a miss.
+  // unticked today never breaks a run, but it is due: the Days view counts it from the start
+  // (D-041).
   const over = (d) => d <= lastDay && !(isCurrent && d === now.d);
 
   const habits = (month?.habits || []).map((h) => {
@@ -41,7 +42,7 @@ export function monthStats(month, y, m, now) {
         if (k !== 'due') return; // rest days neither break nor extend a run
         const d = i + 1;
         if (cells[i]) { credit++; run++; longest = Math.max(longest, run); } else if (over(d)) run = 0;
-        if (over(d) || cells[i]) { dueSoFar++; if (cells[i]) doneSoFar++; }
+        if (d <= lastDay || cells[i]) { dueSoFar++; if (cells[i]) doneSoFar++; }
       });
     } else if (cadence === 'monthly') {
       credit = Math.min(1, done);

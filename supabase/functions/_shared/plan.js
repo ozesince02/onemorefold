@@ -4,7 +4,8 @@
 // agree on what "due" means.
 import { rowsToState } from './lib/sync/rows.js';
 import { upcomingReminders, stillDue, pushText } from './lib/reminders-core.js';
-import { wallClock, pad } from './lib/dates.js';
+import { wallClock, pad, shiftMonth } from './lib/dates.js';
+import { dailySummary, weeklyRecap } from './lib/summaries.js';
 
 export const DAILY_CAP = 30; // notifications a person can get in a day, whatever happens
 export const LOG_DAYS = 14;  // how long the send log keeps a row
@@ -15,7 +16,12 @@ export function clocks(settings, now) {
     let clock;
     try { clock = wallClock(now, s.time_zone); } catch { clock = wallClock(now, 'UTC'); }
     const y = clock.getFullYear(), m = clock.getMonth() + 1;
-    return { user_id: s.user_id, off: s.off || [], clock, month: `${y}-${pad(m)}-01`, day: `${y}-${pad(m)}-${pad(clock.getDate())}` };
+    const prev = shiftMonth(y, m, -1);
+    return {
+      user_id: s.user_id, off: s.off || [], clock, month: `${y}-${pad(m)}-01`, day: `${y}-${pad(m)}-${pad(clock.getDate())}`,
+      prevMonth: `${prev.y}-${pad(prev.m)}-01`,
+      reminders: s.reminders !== false, daily: !!s.daily, weekly: !!s.weekly, summaryTime: s.summary_time || '21:30',
+    };
   });
 }
 
@@ -71,3 +77,44 @@ function planOne(p, habitMonths, ticks, sent) {
 
 // Rows older than LOG_DAYS can go: nothing is ever sent for a day that far back.
 export const logCutoff = (now) => new Date(now.getTime() - LOG_DAYS * 86400000).toISOString().slice(0, 10);
+
+// ---------- Daily summary and weekly recap (D-042) ----------
+// Sent on the run whose half hour holds the person's summary time (a late run still counts), so at
+// most once a day each; the recap only on Sundays, in the person's own time zone.
+const minutes = (hhmm) => { const [h, m] = String(hhmm).split(':').map(Number); return h * 60 + (m || 0); };
+const slotOf = (clock) => Math.floor((clock.getHours() * 60 + clock.getMinutes()) / 30) * 30;
+
+export function summariesDue(p) {
+  const now = slotOf(p.clock) === minutes(p.summaryTime);
+  return { daily: p.daily && now, weekly: p.weekly && now && p.clock.getDay() === 0 };
+}
+
+// people: from clocks(). habitMonths and ticks: rows for this month and the one before (summaries
+// look back for runs and the week before). sent: today's push_log rows. Returns messages to send.
+export function planSummaries({ people, habitMonths, ticks, sent }) {
+  const out = [];
+  for (const p of people) {
+    const due = summariesDue(p);
+    if (!due.daily && !due.weekly) continue;
+    try {
+      const mine = (r) => r.user_id === p.user_id && (r.month === p.month || r.month === p.prevMonth);
+      const state = rowsToState({
+        months: [{ month: p.prevMonth }, { month: p.month }],
+        habit_months: habitMonths.filter(mine),
+        ticks: ticks.filter((t) => t.user_id === p.user_id && (t.day.startsWith(p.month.slice(0, 8)) || t.day.startsWith(p.prevMonth.slice(0, 8)))),
+      });
+      const now = { y: p.clock.getFullYear(), m: p.clock.getMonth() + 1, d: p.clock.getDate() };
+      const since = { y: Number(p.prevMonth.slice(0, 4)), m: Number(p.prevMonth.slice(5, 7)) };
+      const already = (kind) => sent.some((r) => r.user_id === p.user_id && r.kind === kind && r.day === p.day);
+      const add = (kind, slug, text) => text && !already(kind) && out.push({
+        user_id: p.user_id, kind, slug, day: p.day,
+        // No habit id: a summary's tag ("~daily", "~weekly") can never match a habit's, whose ids
+        // never contain "~", so it can't replace a reminder on screen.
+        payload: { ...text, kind, date: p.day },
+      });
+      if (due.daily) add('daily', 'summary', dailySummary(state, now, since));
+      if (due.weekly) add('weekly', 'week-recap', weeklyRecap(state, now));
+    } catch { /* one person's odd data skips only them */ }
+  }
+  return out;
+}
