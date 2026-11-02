@@ -3,7 +3,7 @@
 What changed, for people using the app. Why it changed lives in [docs/decisions.md](docs/decisions.md).
 Dates are when the work landed.
 
-## Unreleased
+## 0.14.0 — 3 November 2026
 
 ### Added
 - **A daily summary and a weekly recap, with the app closed.** Under Habits → Reminders, on a
