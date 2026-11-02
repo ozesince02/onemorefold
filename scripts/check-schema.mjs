@@ -126,6 +126,16 @@ for (const [sql, params, what] of badPush) {
 }
 await rejects(as(B, `insert into public.push_settings (user_id) values ($1)`, [A]), /row-level security|duplicate/, "B can't write A's settings");
 
+// Daily summary and weekly recap (D-042): two switches, off by default, and a time on the half hour.
+assert.deepEqual((await as(A, 'select daily, weekly, summary_time::text as t from public.push_settings')).rows[0], { daily: false, weekly: false, t: '21:30:00' }, 'summaries start off, at 21:30');
+await as(A, `update public.push_settings set daily = true, weekly = true, summary_time = '20:00'`);
+assert.equal((await as(A, 'select summary_time::text as t from public.push_settings')).rows[0].t, '20:00:00', 'A picks 20:00');
+await rejects(as(A, `update public.push_settings set summary_time = '20:15'`), /violates|constraint/, 'refused: summaries arrive on the hour or half hour');
+await rejects(as(A, `update public.push_settings set summary_time = '20:30:10'`), /violates|constraint/, 'refused: no seconds');
+assert.equal((await as(B, `update public.push_settings set daily = false where user_id = $1`, [A])).affectedRows, 0, "B can't switch off A's summaries");
+await db.query(`insert into public.push_log (user_id, kind, slug, day) values ($1, 'daily', 'summary', '2026-10-28'), ($1, 'weekly', 'week-recap', '2026-10-25')`, [A]);
+await rejects(db.query(`insert into public.push_log (user_id, kind, slug, day) values ($1, 'monthly', 'summary', '2026-10-28')`, [A]), /violates|constraint/, 'refused: only reminders, summaries and recaps are logged');
+
 // Done and Later on closed-app reminders (D-039): one-time tokens, used only by the service role.
 const hashOf = (n) => n.toString(16).padStart(64, '0');
 const addToken = (n, slug, day, extra = '') => db.query(`insert into public.push_actions (token_hash, user_id, slug, day, expires_at${extra ? ', created_at' : ''}) values ($1, $2, $3, $4, ${extra || "now() + interval '1 day'"}${extra ? ", now() - interval '3 days'" : ''})`, [hashOf(n), A, slug, day]);

@@ -231,6 +231,9 @@ td.is-today .cell:not([aria-pressed="true"]) { outline: 2px solid var(--ink); ou
 .push-box h3 { font-family: var(--text); font-weight: 900; font-size: 15px; }
 .push-box .note { margin-top: 6px; }
 .push-box .backup-actions { margin-top: 12px; }
+.push-extra { margin: 14px 0 0; }
+.rem-list.push-extra label { grid-template-columns: 22px 1fr; }
+.push-box .rem-lead { margin-top: 8px; }
 .backup-actions .btn { min-height: 44px; padding: 0 18px; font-size: 15px; }
 .danger { background: var(--bg-2); color: var(--accent-ink); }
 .danger:hover { background: var(--sakura); }
