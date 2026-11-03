@@ -11,8 +11,9 @@ Dates are when the work landed.
   saying so), and stay off once you turn them off there. Everywhere else, a slip in the tracker
   offers them in one tap, with "Remind me in 3 days". Daily summaries and weekly recaps still wait
   for you to choose them. (D-043)
-- The noren on the front page announces closed-app reminders until 24 November, then goes back to
-  "free for everyone" by itself. Closing one notice no longer hides the next. (D-040, D-043)
+- The noren on the front page now takes turns between its notices (closed-app reminders until 24
+  November, and "free for everyone"), changing every few seconds and pausing while you point at
+  it. Closing it lasts for that visit; it hangs again the next time. (D-040, D-043)
 
 ## 0.14.0 — 3 November 2026
 

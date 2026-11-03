@@ -57,13 +57,17 @@ assert.throws(() => wallClock(instant, 'Not/A_Zone'), RangeError, 'an unknown zo
 
 // On by default (D-043): who gets signed up without a prompt, and who gets the invitation.
 const { shouldAutoEnable, shouldInvite, INVITE_DAYS } = await import('../src/lib/push-default.js');
-const device = { signedIn: true, supported: true, state: 'off', permission: 'granted', homeScreen: false, choice: null, timed: true, until: 0, now: 1e12 };
+const ASHA = '00000000-0000-4000-8000-00000000000a', RAVI = '00000000-0000-4000-8000-00000000000b';
+const device = { signedIn: true, supported: true, state: 'off', permission: 'granted', homeScreen: false, account: ASHA, choice: null, owner: null, inTab: true, timed: true, until: 0, now: 1e12 };
 assert.equal(shouldAutoEnable(device), true, 'notifications already allowed here: on without asking');
 assert.equal(shouldAutoEnable({ ...device, choice: 'off' }), false, 'but never after someone turned them off on this device');
 assert.equal(shouldAutoEnable({ ...device, signedIn: false }), false, 'only for a signed-in person');
 assert.equal(shouldAutoEnable({ ...device, state: 'on' }), false, 'nothing to do when already on');
 assert.equal(shouldAutoEnable({ ...device, permission: 'default' }), false, 'never without the browser\'s permission');
 assert.equal(shouldAutoEnable({ ...device, homeScreen: true }), false, 'not on an iPhone outside the Home Screen');
+assert.equal(shouldAutoEnable({ ...device, inTab: false }), false, 'not once in-tab reminders were switched off (or the folds removed)');
+assert.equal(shouldAutoEnable({ ...device, owner: ASHA }), true, 'the same account again: fine');
+assert.equal(shouldAutoEnable({ ...device, account: RAVI, owner: ASHA }), false, "a shared computer: the next person's reminders never switch on by themselves");
 const asked = { ...device, permission: 'default' };
 assert.equal(shouldInvite(asked), true, 'not asked yet: invite');
 assert.equal(shouldInvite({ ...asked, timed: false }), false, 'not before any habit has a time');

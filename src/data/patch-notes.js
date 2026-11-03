@@ -14,7 +14,7 @@ export const PATCHES = [
     notes: [
       ['On where they can be.', "If you'd already let One More Fold send notifications, reminders now also arrive with the app closed, all by themselves. Not your thing? Habits, Reminders, off, and they stay off on that device."],
       ['One tap everywhere else.', "Signed in but never asked? A small slip in the tracker offers them. Busy? \"Remind me in 3 days\" and it waits, politely, for three days."],
-      ['News on the noren.', "The curtain on the front page now announces it, then goes back to telling everyone we're free, with no ads, all by itself."],
+      ['News on the noren.', "The curtain on the front page now takes turns: the news, then a reminder that we're free, with no ads. Close it and it's gone until your next visit."],
     ],
   },
   {

@@ -160,9 +160,9 @@ Shadows are allowed **only** on paper lying on paper. Buttons and controls are f
   that belongs in the page.
 - **Motion:** one sway as the page opens, and it lifts away when closed. None with reduced motion.
 - **Phones:** below 600px the strips join into one, with phrases separated by middots.
-- Edit `src/data/bulletin.js` to change or take it down; change `id` with the message. It's a
-  queue (`NOTICES`): news first with an end date, the standing message last, so it falls back by
-  itself.
+- Edit `src/data/bulletin.js` to change or take it down. `NOTICES` take turns every 9 seconds,
+  pausing on hover or focus; give news an end date and it drops out by itself. ✕ hides it for one
+  visit.
 - **The invitation slip** (D-043) uses the backup slip's shape above the current month: "Turn on"
   (sumi) and "Remind me in 3 days" (text link).
 
