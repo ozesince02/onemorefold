@@ -15,6 +15,10 @@ Dates are when the work landed.
   November, and "free for everyone"), changing every few seconds and pausing while you point at
   it. Closing it lasts for that visit; it hangs again the next time. (D-040, D-043)
 
+### Fixed
+- The "daily summary" and "weekly recap" boxes now fill with red when ticked, in every paper; before,
+  a ticked box looked almost the same as an empty one. Empty reminder boxes get a thin outline.
+
 ## 0.14.0 — 3 November 2026
 
 ### Added
