@@ -809,3 +809,26 @@ Accepted · 3 Nov 2026 · plan: [buddies-and-notifications.md](buddies-and-notif
 - **Looking back:** the sender reads this month and the one before. A run that reaches back to the
   start of that window is "more than" its length, rather than a number that might be short.
 
+## D-043 Reminders with the app closed are on by default, where they can be
+Accepted · 4 Nov 2026 · changes D-028's "each device opts in"
+
+- **Context:** existing users never discovered closed-app reminders. They were tucked inside the
+  Reminders panel, behind a switch nobody went looking for.
+- **The limit:** a browser sends a site's notifications only after the person on that device has
+  allowed them, from a tap on the page. No site can switch that on by itself, so "on by default"
+  can only mean as far as the browser allows.
+- **Decision (src/lib/push-default.js):**
+  - **Already allowed:** on a signed-in device where this site's notifications are already allowed
+    (people who turned on in-tab reminders), closed-app reminders switch on without a prompt, and a
+    note says so at that moment ("Turn them off any time under Habits, Reminders"). Once someone
+    turns them off on a device, that's remembered and they never come back on by themselves there.
+  - **Not asked yet:** where the browser hasn't been asked, a slip above the current month offers
+    them in one tap, with "Remind me in 3 days" instead of "Not now". It needs a habit with a time.
+    It never shows once notifications are blocked or after someone turned reminders off.
+  - **Choices are per device,** under `eightfold:v1:`, so "remove my folds" clears them.
+- **Not changed:** the daily summary and weekly recap stay off until chosen. A nightly message nobody
+  asked for is how people end up blocking a site's notifications altogether.
+- **Privacy:** the Privacy page says when they come on by themselves and how they stay off.
+- **The noren** became a queue: the reminders news until 24 November, then the standing
+  free-for-everyone message by itself. Closing one notice no longer hides the next.
+
