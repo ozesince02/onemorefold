@@ -7,6 +7,18 @@
 
 export const PATCHES = [
   {
+    version: '0.15',
+    date: '2026-11-04',
+    title: 'Reminders that find you, without asking twice',
+    sticker: 'オシラセ',
+    notes: [
+      ['On where they can be.', "If you'd already let One More Fold send notifications, reminders now also arrive with the app closed, all by themselves. Not your thing? Habits, Reminders, off, and they stay off on that device."],
+      ['One tap everywhere else.', "Signed in but never asked? A small slip in the tracker offers them. Busy? \"Remind me in 3 days\" and it waits, politely, for three days."],
+      ['News on the noren.', "The curtain on the front page now takes turns: the news, then a reminder that we're free, with no ads. Close it and it's gone until your next visit."],
+      ['Ticks you can see.', "The daily summary and Sunday recap boxes now go red when ticked. Before, ticked and unticked looked like twins, and only one of them was telling the truth."],
+    ],
+  },
+  {
     version: '0.14',
     date: '2026-11-03',
     title: 'How did today go?',

@@ -809,3 +809,35 @@ Accepted · 3 Nov 2026 · plan: [buddies-and-notifications.md](buddies-and-notif
 - **Looking back:** the sender reads this month and the one before. A run that reaches back to the
   start of that window is "more than" its length, rather than a number that might be short.
 
+## D-043 Reminders with the app closed are on by default, where they can be
+Accepted · 4 Nov 2026 · changes D-028's "each device opts in"
+
+- **Context:** existing users never discovered closed-app reminders. They were tucked inside the
+  Reminders panel, behind a switch nobody went looking for.
+- **The limit:** a browser sends a site's notifications only after the person on that device has
+  allowed them, from a tap on the page. No site can switch that on by itself, so "on by default"
+  can only mean as far as the browser allows.
+- **Decision (src/lib/push-default.js):**
+  - **Already allowed:** closed-app reminders switch on without a prompt when all of these hold:
+    - the device is signed in;
+    - this site's notifications are already allowed;
+    - in-tab reminders are still on in this browser;
+    - no other account had them switched on here first.
+
+    Permission belongs to the browser, not the account, so the last rule (the browser's "owner")
+    keeps the next person on a shared computer from being signed up silently. A note says so at
+    that moment ("Turn them off any time under Habits, Reminders"). Turning them off is remembered
+    per account in that browser. "Remove my folds" resets in-tab reminders too, so they can't come
+    back on that way either. (From the review of 4 Nov.)
+  - **Not asked yet:** where the browser hasn't been asked, a slip above the current month offers
+    them in one tap, with "Remind me in 3 days" instead of "Not now". It needs a habit with a time.
+    It never shows once notifications are blocked or after someone turned reminders off.
+  - **Choices are per device,** under `eightfold:v1:`, so "remove my folds" clears them.
+- **Not changed:** the daily summary and weekly recap stay off until chosen. A nightly message nobody
+  asked for is how people end up blocking a site's notifications altogether.
+- **Privacy:** the Privacy page says when they come on by themselves and how they stay off.
+- **The noren** now holds several notices that take turns, every 9 seconds, with the lift-and-sway
+  animation (none for reduced motion). It pauses while pointed at or focused, as anything that
+  changes by itself must. A notice drops out after its last day. Closing it lasts one visit; the
+  next visit hangs it again, so nothing is stored any more (the old "closed" key is cleared).
+

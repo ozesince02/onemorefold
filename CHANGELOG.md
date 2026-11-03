@@ -3,6 +3,22 @@
 What changed, for people using the app. Why it changed lives in [docs/decisions.md](docs/decisions.md).
 Dates are when the work landed.
 
+## 0.15.0 — 4 November 2026
+
+### Changed
+- **Reminders with the app closed are on by default** where they can be: on a signed-in device that
+  has already allowed One More Fold's notifications, they switch on by themselves (with a note
+  saying so), and stay off once you turn them off there. Everywhere else, a slip in the tracker
+  offers them in one tap, with "Remind me in 3 days". Daily summaries and weekly recaps still wait
+  for you to choose them. (D-043)
+- The noren on the front page now takes turns between its notices (closed-app reminders until 24
+  November, and "free for everyone"), changing every few seconds and pausing while you point at
+  it. Closing it lasts for that visit; it hangs again the next time. (D-040, D-043)
+
+### Fixed
+- The "daily summary" and "weekly recap" boxes now fill with red when ticked, in every paper; before,
+  a ticked box looked almost the same as an empty one. Empty reminder boxes get a thin outline.
+
 ## 0.14.0 — 3 November 2026
 
 ### Added
