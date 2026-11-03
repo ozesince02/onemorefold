@@ -3,7 +3,7 @@
 What changed, for people using the app. Why it changed lives in [docs/decisions.md](docs/decisions.md).
 Dates are when the work landed.
 
-## Unreleased
+## 0.15.0 — 4 November 2026
 
 ### Changed
 - **Reminders with the app closed are on by default** where they can be: on a signed-in device that
