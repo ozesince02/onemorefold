@@ -16,6 +16,7 @@ import { watchTheme } from './lib/theme.js';
 import { createSync, supabaseApi } from './lib/sync/engine.js';
 import { startReminders, enableReminders, disableReminders, sendTestReminder, permissionState, nextReminder, setPushHere } from './ui/reminders.js';
 import { pushSupported, needsHomeScreen, pushState, enablePush, disablePush, saveSettings, loadSummaries, saveSummaries, SUMMARY_TIMES } from './lib/push.js';
+import { shouldAutoEnable, shouldInvite, pushChoice, setPushChoice, pushOwner, setPushOwner, inviteUntil, snoozeInvite, INVITE_DAYS } from './lib/push-default.js';
 
 watchTheme();
 const $ = (s, r = document) => r.querySelector(s);
@@ -151,6 +152,7 @@ function monthView(key, year) {
 
   return `<div class="title-row"><h1>${monthName(m)} ${y}</h1><p class="finding">${finding}</p>${nav}</div>
     ${chooseBar()}
+    ${isCurrent ? inviteBar() : ''}
     ${isCurrent ? foldBar() : ''}
     ${backupBar()}
     <div class="board">${blocks.join('')}</div>`;
@@ -748,7 +750,17 @@ function checkPush(account) {
   if (!pushSupported()) return setPush('unsupported');
   getClient()
     .then(async (sb) => {
-      const state = await pushState(sb);
+      let state = await pushState(sb);
+      // On by default (D-043): notifications are already allowed here, so sign this device up
+      // without a prompt, and say so while the person is looking.
+      if (shouldAutoEnable(pushDevice(state))) {
+        try {
+          await enablePush(sb, account.id, store.reminders().off);
+          setPushOwner(account.id);
+          state = 'on';
+          toast('Reminders now reach this device even with One More Fold closed. Turn them off any time under Habits, Reminders.');
+        } catch { /* stays off; the panel still offers it */ }
+      }
       setPush(state);
       if (state === 'on') {
         await saveSettings(sb, account.id, store.reminders().off);
@@ -759,9 +771,44 @@ function checkPush(account) {
     .catch(() => setPush('off'));
 }
 
+// This device and person, for the on-by-default rules (src/lib/push-default.js).
+function pushDevice(state = ui.push) {
+  const now = new Date();
+  const month = store.month(monthKey(now.getFullYear(), now.getMonth() + 1));
+  return {
+    signedIn: ui.account.status === 'signed-in',
+    supported: pushSupported(),
+    state,
+    permission: typeof Notification === 'undefined' ? 'unsupported' : Notification.permission,
+    homeScreen: needsHomeScreen(),
+    account: ui.account.id,
+    choice: pushChoice(ui.account.id),
+    owner: pushOwner(),
+    inTab: store.reminders().enabled === true,
+    timed: !!month?.habits.some((h) => h.time),
+    until: inviteUntil(),
+    now: now.getTime(),
+  };
+}
+
+// The invitation (D-043): one slip above the month until reminders are on, with "in 3 days".
+function inviteBar() {
+  if (!shouldInvite(pushDevice())) return '';
+  return `<section class="backup-bar sheet-wrap" aria-labelledby="invite-h">
+    <div class="backup-bar-sheet">
+      <div><h2 id="invite-h">Reminders, even with the app closed</h2><p>Get a nudge before each habit's time, without keeping a tab open. One tap, and you can turn it off any time.</p></div>
+      <div class="backup-bar-actions">
+        <button class="btn btn--ink" type="button" data-push="on">Turn on</button>
+        <button class="seg-link" type="button" data-push-later>Remind me in ${INVITE_DAYS} days</button>
+      </div>
+    </div>
+  </section>`;
+}
+
 async function togglePush(on) {
   const account = ui.account;
   if (account.status !== 'signed-in') return;
+  setPushChoice(account.id, on);
   setPush('busy');
   try {
     const sb = await getClient();
@@ -776,6 +823,8 @@ async function togglePush(on) {
       toast('This device won\'t get reminders while One More Fold is closed.');
     }
   } catch (err) {
+    // The browser's own prompt was dismissed without an answer: the invitation waits its 3 days.
+    if (on && Notification.permission === 'default') snoozeInvite();
     setPush(Notification.permission === 'denied' ? 'denied' : 'off');
     toast(err.message || 'That didn\'t work. Try again in a moment.');
   }
@@ -982,6 +1031,11 @@ view.addEventListener('click', (e) => {
     store.setPref('percentView', pctView());
     ui.pct = null;
     return toast(`${VIEW_LABELS[pctView()]} is now your default view.`);
+  }
+  if (e.target.closest('[data-push-later]')) {
+    snoozeInvite();
+    toast(`Okay. We'll ask again in ${INVITE_DAYS} days.`);
+    return render();
   }
   const push = e.target.closest('[data-push]');
   if (push) return togglePush(push.dataset.push === 'on');

@@ -283,6 +283,20 @@ around numbers and the person's own habit names.
   - Summaries go out ten at a time.
   - Turning off the last device clears the summary switches too.
 
+### 4 November 2026 — closed-app reminders on by default (branch `feature/reminders-by-default`)
+
+Reminders now switch on without a prompt where the browser already allows our notifications
+(D-043). Our review found that permission belongs to the browser, not the account. On a shared
+computer the next person to sign in would have been signed up silently, with their habit names
+arriving on that machine. Someone who had switched in-tab reminders off, or removed their folds,
+could also have had them come back. Fixed before merging:
+- it happens only for the first account it happened for in that browser;
+- only while in-tab reminders are still on;
+- "turned off" is remembered per account.
+
+The invitation slip waits its 3 days if the browser's prompt is dismissed. The noren's closed list
+is gone (closing lasts one visit), and the old key is cleared.
+
 ### Accepted risks (owner's decision, 24 Oct 2026, D-016)
 
 - The repository is public and holds the owner's January–October 2026 habit log (names, times,
