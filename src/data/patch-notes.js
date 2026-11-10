@@ -7,6 +7,18 @@
 
 export const PATCHES = [
   {
+    version: '0.16',
+    date: '2026-11-11',
+    title: 'Bring your people',
+    sticker: 'ナカマ',
+    notes: [
+      ['A new tab: Flock.', "Cranes fly in flocks, and now so do you. It's where your buddies live, and soon your gangs too."],
+      ['Your card.', 'Pick a tag like oze#1000. The code becomes a little red hanko seal. Nobody can search for it, so nobody finds you unless you hand it over.'],
+      ['Hand it over.', "One link, good for one friend and seven days. They open it, choose what you'll see of them, and you're buddies. No follower counts were harmed."],
+      ['You decide what they see.', "Just buddies, how you're doing, or the habits you pick. Mark a habit private and no buddy ever sees it, not even a little."],
+    ],
+  },
+  {
     version: '0.15',
     date: '2026-11-04',
     title: 'Reminders that find you, without asking twice',

@@ -3,7 +3,7 @@
 What changed, for people using the app. Why it changed lives in [docs/decisions.md](docs/decisions.md).
 Dates are when the work landed.
 
-## Unreleased
+## 0.16.0 — 11 November 2026
 
 ### Added
 - **Flock**, a fourth tab, and **buddies** in it (D-044, D-045):
