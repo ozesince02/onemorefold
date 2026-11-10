@@ -3,6 +3,21 @@
 What changed, for people using the app. Why it changed lives in [docs/decisions.md](docs/decisions.md).
 Dates are when the work landed.
 
+## 0.16.0 — 11 November 2026
+
+### Added
+- **Flock**, a fourth tab, and **buddies** in it (D-044, D-045):
+  - **Your card:** a user tag like oze#1000, with its code drawn as a hanko seal. Nobody can search
+    for it.
+  - **Adding a buddy:** hand over your card as a one-time link (good for 7 days); they open it,
+    choose what you'll see of them, and swap cards.
+  - **What each buddy sees:** for each one, you choose "Just buddies", "How I'm doing" (totals over
+    7 and 30 days, the trend, your longest run) or "My habits" (plus the habits you pick).
+  - **Private habits:** a habit marked private on the Habits page is never shown to anyone.
+  - **Removing:** either of you can remove the other at any time, and from then on neither sees
+    anything.
+  - **Why buddies?** A crane note explains it.
+
 ## 0.15.0 — 4 November 2026
 
 ### Changed

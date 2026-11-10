@@ -171,6 +171,16 @@ export const store = {
     save();
   },
 
+  // A private habit is never shown to any buddy (D-029), whatever level they're at.
+  isPrivate: (id) => state.private?.[id] === true,
+  setPrivate(id, on) {
+    if (!isId(id)) return;
+    state.private ||= {};
+    if (on) state.private[id] = true; else delete state.private[id];
+    if (!Object.keys(state.private).length) delete state.private;
+    save();
+  },
+
   // schedule: { cadence, weekdays, timesPerWeek } (D-013). A non-daily schedule sets its own goal.
   addHabit(key, { name, goal = 20, time = '', start = 1, cadence = 'daily', weekdays, timesPerWeek }) {
     const clean = safeName(name);

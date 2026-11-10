@@ -841,3 +841,59 @@ Accepted · 4 Nov 2026 · changes D-028's "each device opts in"
   changes by itself must. A notice drops out after its last day. Closing it lasts one visit; the
   next visit hangs it again, so nothing is stored any more (the old "closed" key is cleared).
 
+
+## D-044 Flock: where buddies and gangs live, and how they look
+Accepted · 11 Nov 2026 · builds on D-029 and D-030
+
+- **Context:** before building buddies and gangs, the owner wanted to see where they'd sit and how
+  they'd look. Three directions each were sketched; the owner picked name cards for buddies and,
+  for gangs, one shared crane plus a banner of stamps.
+- **Decision:**
+  - **A fourth tab, "Flock".** Cranes fly in flocks; it's one short word that reads at a glance
+    beside Month, Year and Habits. "Together" was too generic, "Nakama" too hard to decode as a
+    tab name, so ナカマ became the page's sticker instead.
+  - **The hanko** (a round seal of your `TAG`) is the one mark for a person throughout Flock.
+  - **Buddies are meishi;** adding one is handing over your card.
+  - **A gang folds one crane together** and keeps a **stamp banner** day by day, which becomes a
+    keepsake on the Year view when the challenge ends.
+  - **The gang names who hasn't folded yet today.** Softer options (counts only) were offered; the
+    owner wants members to see it, as with buddies noticing someone has gone quiet (D-029).
+- **Not changed:** buddies still see totals and trends, never day grids; a gang member sees only
+  that gang's habit; nothing in a shared link's preview identifies the sender.
+- Details in [buddies-and-notifications.md](buddies-and-notifications.md), "The look: Flock".
+
+
+## D-045 Buddies: what's stored, and who works out the figures
+Accepted · 11 Nov 2026 · builds on D-029 and D-044
+
+- **Context:** a buddy at "How I'm doing" or "My habits" sees totals ("18 of 24 due, last 7 days"),
+  the trend and the longest run going. Working those out needs the schedule rules (rest days,
+  times a week, today counting from the morning, D-041), which live in `stats.js`.
+- **Decision: your own device works out your figures** with the tracker's maths
+  (`figuresOf()` in `src/lib/buddies.js`) and keeps one row, `buddy_figures`, up to date when you
+  use One More Fold. Only `my_buddies()` reads it, for your buddies, and only as far as each one's
+  level allows. Rewriting the schedule rules in SQL would have made a second copy that could
+  disagree with the tracker; an Edge Function would have needed the service role to read other
+  people's habits.
+  - **The cost:** figures stop moving while someone isn't using the app. Every card says "as of"
+    its date when it isn't today, which is honest, and says on its own that a buddy has gone quiet.
+    Later, the 30-minute job could refresh them.
+  - **Only what's needed is stored:** nothing at all while nobody is shown any figures; habit names
+    only for habits picked for some buddy at "My habits", never a private one. The database drops
+    private habits again when it answers.
+  - **Self-reported:** someone could publish untrue figures about themselves. That only misleads
+    their own buddies about their own habits, as untrue ticks would.
+- **The rest, as planned (D-029):**
+  - **Tags:** `name#CODE` on `profiles`, unique ignoring capitals. The database refuses symbols,
+    emoji, invisible and direction-changing characters, and names that pass as the team.
+  - **Invites:** a one-time card. The secret (32 random bytes) travels after `#`; only its SHA-256
+    is stored. It's good for 7 days, with at most 10 open.
+  - **Pairs:** two rows per pair, one per direction, made only by `accept_invite()` and removed
+    only by `remove_buddy()`. A pair counts only while both rows exist.
+  - **Defaults:** the sender starts at "How I'm doing", and the person accepting picks their level
+    on the card.
+  - **Limits:** 50 buddies.
+  - **Private habits:** a `private` column on `habits`, synced like the colour.
+- **Release order:** the migration (`20261111120000_buddies.sql`) must be run before the site that
+  uses it ships. Syncing writes the new `private` column, so the old database would refuse it.
+

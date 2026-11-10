@@ -12,6 +12,8 @@ import { CRANE_GOAL, CRANE_GOAL_TEXT } from './config.js';
 import { createCraneStage } from './three/stage.js';
 import { startAuth, getClient } from './lib/auth.js';
 import { createAccountMenu } from './ui/account-menu.js';
+import { createFlock, captureCard } from './ui/flock.js';
+import { wireCraneNotes } from './ui/note-trigger.js';
 import { watchTheme } from './lib/theme.js';
 import { createSync, supabaseApi } from './lib/sync/engine.js';
 import { startReminders, enableReminders, disableReminders, sendTestReminder, permissionState, nextReminder, setPushHere } from './ui/reminders.js';
@@ -40,13 +42,14 @@ let ui = { swatchFor: null, pct: null, protection: null, account: { status: 'loa
 let stage = null;
 let lastProgress = -1;
 
-// ---------- Routing: #/month/2026-10, #/year/2026, #/habits/2026-10, #/fold/2026 ----------
+// ---------- Routing: #/month/2026-10, #/year/2026, #/habits/2026-10, #/fold/2026, #/flock ----------
 // Only months from the first one with habits up to next month can be opened (D-017); anything
 // else lands on the nearest month that can.
 function route() {
   const [name = 'month', arg] = location.hash.replace(/^#\/?/, '').split('#')[0].split('/');
   const state = store.get();
   const current = monthKey(now.y, now.m);
+  if (name === 'flock') return { name };
   if (name === 'year' || name === 'fold') {
     const { first } = yearBounds(state, now);
     const year = Math.min(now.y, Math.max(first, Number(arg) || now.y));
@@ -59,7 +62,7 @@ function route() {
 }
 
 // The address that matches a route, so a corrected route doesn't leave a wrong URL behind.
-const hashOf = (r) => `#/${r.name}/${r.key || r.year}`;
+const hashOf = (r) => (r.name === 'flock' ? '#/flock' : `#/${r.name}/${r.key || r.year}`);
 
 // ---------- Render ----------
 let queued = false;
@@ -82,7 +85,7 @@ function render() {
 
   $$('.views a').forEach((a) => {
     const v = a.dataset.view;
-    a.href = v === 'year' ? `#/year/${r.year || (r.key ? parseKey(r.key).y : now.y)}` : `#/${v}/${r.key || monthKey(now.y, now.m)}`;
+    a.href = v === 'flock' ? '#/flock' : v === 'year' ? `#/year/${r.year || (r.key ? parseKey(r.key).y : now.y)}` : `#/${v}/${r.key || monthKey(now.y, now.m)}`;
     if (v === r.name || (v === 'year' && r.name === 'fold')) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
   });
   $('[data-cranes-chip]').innerHTML = `<b>${year.cranes}</b> cranes in ${now.y}`;
@@ -90,6 +93,7 @@ function render() {
   if (r.name === 'year') view.innerHTML = yearView(r.year);
   else if (r.name === 'fold') view.innerHTML = foldView(r.year);
   else if (r.name === 'habits') view.innerHTML = habitsView(r.key);
+  else if (r.name === 'flock') view.innerHTML = flock.render();
   else view.innerHTML = monthView(r.key, year);
 
   placeCrane();
@@ -592,6 +596,7 @@ function habitsView(key) {
         <button class="icon-btn danger" type="button" data-remove="${h.id}">Remove</button>
       </div>
       ${scheduleEditor(h)}
+      ${ui.account.status === 'signed-in' ? `<label class="private-toggle"><input type="checkbox" data-private="${h.id}" data-focus="private-${h.id}" ${store.isPrivate(h.id) ? 'checked' : ''}><span><b>Private.</b> Never shown to any buddy, whatever they're allowed to see.</span></label>` : ''}
       ${ui.swatchFor === h.id ? `<div class="swatches" role="group" aria-label="Paper colours">${PAPERS.map((p) => `<button type="button" style="--c:${p}" data-color="${h.id}:${p}" aria-pressed="${p.toLowerCase() === c.toLowerCase()}" aria-label="${p}"></button>`).join('')}</div>` : ''}
     </div>`;
   }).join('');
@@ -664,6 +669,11 @@ function chooseSync(kind) {
 }
 const menu = createAccountMenu($('[data-account]'), { page: 'app', onChoose: chooseSync, onLeave: () => sync.stop(), toast: (t) => toast(t) });
 
+// Flock (D-044): buddies, as name cards. A card handed over by link is picked up before anything draws.
+captureCard();
+const flock = createFlock({ view, store, getClient, toast, rerender: scheduleRender, openAccount: () => menu.open(), today });
+wireCraneNotes(view);
+
 // First sign-in on a browser that already has folds, when the account has some too.
 function chooseBar() {
   if (ui.sync.state !== 'choose') return '';
@@ -682,6 +692,7 @@ function onAccount(account) {
   const was = ui.account;
   ui.account = account;
   menu.update({ account });
+  flock.onAccount(account);
   if (account.status === 'signed-in' && account.id) {
     getClient().then((sb) => sync.start(supabaseApi(sb, account.id), account.id)).catch(() => {});
     if (was.status !== 'signed-in') checkPush(account);
@@ -1063,6 +1074,12 @@ view.addEventListener('change', (e) => {
     store.updateHabit(route().key, input.dataset.edit, { [input.dataset.field]: input.value.trim() });
     return;
   }
+  if (e.target.matches('[data-private]')) {
+    const id = e.target.dataset.private;
+    store.setPrivate(id, e.target.checked);
+    const h = store.view(route().key).habits.find((x) => x.id === id);
+    return toast(e.target.checked ? `${h?.name || 'That habit'} is private: no buddy sees it.` : `${h?.name || 'That habit'} can be shared again, with buddies you pick it for.`);
+  }
   if (e.target.matches('[name="default-view"]')) {
     ui.pct = null;
     store.setPref('percentView', e.target.value);
@@ -1138,6 +1155,7 @@ view.addEventListener('keydown', (e) => {
 });
 
 store.subscribe((state, info) => {
+  flock.onStore();
   if (info?.saveFailed) toast('This browser refused to save. Your last change may be lost; save a backup now.');
   scheduleRender();
 });
@@ -1150,7 +1168,14 @@ function scrollToAnchor() {
   if (el) el.scrollIntoView({ block: 'start' });
   else window.scrollTo({ top: 0 });
 }
-window.addEventListener('hashchange', () => { ui.swatchFor = null; render(); view.focus({ preventScroll: true }); scrollToAnchor(); });
+window.addEventListener('hashchange', () => {
+  captureCard();
+  ui.swatchFor = null;
+  if (route().name === 'flock') flock.refresh();
+  render();
+  view.focus({ preventScroll: true });
+  scrollToAnchor();
+});
 // Another tab (or a reminder fired there) changed the data: take its copy.
 window.addEventListener('storage', (e) => { if (e.key === STORE_KEY) store.reloadFromStorage(); });
 // A new day, or the next nudge time, while the tab is open.

@@ -117,6 +117,11 @@ Shadows are allowed **only** on paper lying on paper. Buttons and controls are f
 
 - **Buttons:** fully round, flat. `.btn` red for the one main action, `.btn--ink` sumi,
   `.btn--quiet` washi. `.icon-btn` for round navigation. Min height 44px (40px inside notes).
+- **Hanko** (`.hanko`): a person's tag code in a round seal, red ring and red text, tilted. The one
+  mark for a person in Flock (D-044); `.hanko--big` on your own card.
+- **Name card** (`.meishi`): a buddy, as a card on the Flock board with a paper band along the
+  top (sora, sakura, matcha, yamabuki, kraft in turn). It shows only figures, each saying what it
+  counts, never a day grid. `.meishi--new` is the dashed "Hand over your card" slot.
 - **Segmented switch** (`.seg`): Days / Goal / Both. Selected is sumi on washi.
   "Make default" appears only when the view differs from the saved default.
 - **Tags** (`.tag`): today's habits. Square box, time, name, run. Ticked box takes the habit colour

@@ -297,6 +297,28 @@ could also have had them come back. Fixed before merging:
 The invitation slip waits its 3 days if the browser's prompt is dismissed. The noren's closed list
 is gone (closing lasts one visit), and the old key is cleared.
 
+### 11 November 2026 — buddies (branch `feature/flock-buddies`)
+
+The first feature where one person's data reaches another (D-029, D-044, D-045). The rule held to:
+nobody reads another person's rows. Everything about a buddy comes from `my_buddies()`, a
+SECURITY DEFINER function that acts only for `auth.uid()`, checks the pair exists both ways, and
+returns only what that buddy's level allows. It never returns a private habit.
+- **New input:**
+  - tags: shape-checked twice, with invisible and direction-changing characters refused;
+  - sharing levels and habit lists: only the caller's own direction, only those two columns;
+  - figures: own row only, every field bounded, each shared habit exactly
+    `{slug, name, done, due}`;
+  - invite hashes: hex SHA-256 only, made only through `create_invite()`.
+- **Invites:** the secret never reaches a server or log (it's after `#`, and only its hash is
+  stored). Guessing a 256-bit secret isn't practical. A card works once, lasts 7 days, and can be
+  taken back. A forwarded card works for whoever opens it first: the link is the key, as with any
+  invite link. The person accepting sees the sender's tag before agreeing.
+- **Shown in the page:** tags and habit names come from other people, so every one goes through
+  `esc()`. The functions' answers are reshaped and checked before use (ids, levels, numbers).
+- **Tests:** `check-schema.mjs` covers strangers, removed buddies, half pairs, each level, private
+  habits, visitors, one-time cards, expiry, the limits and account deletion. `check-buddies.mjs`
+  covers tags, the figures and private habits through sync.
+
 ### Accepted risks (owner's decision, 24 Oct 2026, D-016)
 
 - The repository is public and holds the owner's January–October 2026 habit log (names, times,
