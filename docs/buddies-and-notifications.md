@@ -148,6 +148,9 @@ on or off overall, per habit, and for the summaries. Which devices receive them 
 
 ## 3. Buddies
 
+**Built 11 November 2026 (D-045).** As planned, except that each person's own device works out
+their figures and keeps them where their buddies can be shown them, so cards say "as of" a date.
+
 ### Adding a buddy
 There's no search: you can only add someone by sending them a link.
 - **Invite link:** "Add a buddy" makes a one-time link to send however you like (WhatsApp, in

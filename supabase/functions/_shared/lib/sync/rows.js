@@ -26,7 +26,7 @@ export function stateToRows(state) {
   const put = (table, row) => { rows[keyOf(table, row)] = { table, row }; };
   const ids = new Set(Object.keys(state.colors || {}));
   for (const month of Object.values(state.months)) month.habits.forEach((h) => ids.add(h.id));
-  for (const id of [...ids].sort()) put('habits', { slug: id, color: state.colors?.[id] || DEFAULT_COLOR });
+  for (const id of [...ids].sort()) put('habits', { slug: id, color: state.colors?.[id] || DEFAULT_COLOR, private: state.private?.[id] === true });
 
   for (const [key, month] of Object.entries(state.months)) {
     const { y, m } = parseKey(key);
@@ -59,7 +59,11 @@ export function stateToRows(state) {
 // (reminders, meta) are taken from `local`. The result still goes through cleanState().
 export function rowsToState(tables, local = {}) {
   const colors = {};
-  for (const h of tables.habits || []) colors[h.slug] = h.color;
+  const priv = {};
+  for (const h of tables.habits || []) {
+    colors[h.slug] = h.color;
+    if (h.private === true) priv[h.slug] = true;
+  }
   const months = {};
   for (const r of tables.months || []) months[r.month.slice(0, 7)] = { habits: [], checks: {} };
   const byMonth = [...(tables.habit_months || [])].sort((a, b) => a.position - b.position || a.slug.localeCompare(b.slug));
@@ -86,6 +90,7 @@ export function rowsToState(tables, local = {}) {
   return {
     version: 1,
     colors,
+    ...(Object.keys(priv).length ? { private: priv } : {}),
     months,
     years,
     prefs: { percentView: prefs?.percentView || 'days' },
@@ -125,6 +130,8 @@ export function mergeStates(account, local) {
     }
   }
   for (const [id, c] of Object.entries(local.colors || {})) if (!out.colors[id]) out.colors[id] = c;
+  // Private on either side stays private: the safer way to combine them.
+  for (const id of Object.keys(local.private || {})) (out.private ||= {})[id] = true;
   for (const [y, rec] of Object.entries(local.years || {})) {
     const a = out.years[y] || {};
     out.years[y] = { wish: a.wish || rec.wish || '', foldedAt: a.foldedAt || rec.foldedAt };

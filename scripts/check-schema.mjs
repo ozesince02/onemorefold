@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { supabaseStandIn } from './lib/supabase-stand-in.mjs';
 
-const { db, as } = await supabaseStandIn();
+const { db, as, addUser } = await supabaseStandIn();
 const A = '00000000-0000-4000-8000-00000000000a';
 const B = '00000000-0000-4000-8000-00000000000b';
 const rejects = (p, pattern, message) => assert.rejects(p, pattern, message);
@@ -172,6 +172,138 @@ for (const [sql, what] of badActions) {
   await rejects(db.query(sql, sql.includes('$2') ? [A, hashOf(77)] : [A]), /violates|constraint/, `refused: ${what}`);
 }
 
+// Buddies (D-029, D-044, D-045): tags, invites, the pair, and what each level lets a buddy see.
+const C = '00000000-0000-4000-8000-00000000000c';
+await addUser(C);
+const tag = async (who, name, code) => (await as(who, 'select public.set_my_tag($1, $2) as r', [name, code])).rows[0].r;
+assert.equal(await tag(A, 'Asha Rao', 'run'), 'ok', 'A picks a tag');
+assert.deepEqual((await as(A, 'select tag_name, tag_code from public.profiles')).rows[0], { tag_name: 'Asha Rao', tag_code: 'RUN' }, 'codes are kept in capitals');
+assert.equal(await tag(B, 'asha rao', 'RUN'), 'taken', 'no two people share a tag, ignoring capitals');
+assert.equal(await tag(B, 'asha rao', '4410'), 'ok', 'the same name with another code is fine');
+assert.equal(await tag(B, 'Ravi', '4410'), 'ok', 'and a tag can change');
+for (const [name, code, what] of [
+  ['ab', '1000', 'names are at least 3 characters'],
+  ['a'.repeat(17), '1000', 'and at most 16'],
+  [' oze', '1000', 'no leading space'],
+  ['o  ze', '1000', 'no double spaces'],
+  ['oze<b>', '1000', 'no symbols'],
+  ['oze‮', '1000', 'no direction-changing characters'],
+  ['o​ze', '1000', 'no invisible characters'],
+  ['oze\u{1F600}', '1000', 'no emoji'],
+  ['One More Fold', '1000', 'nobody passes as the team'],
+  ['Admin', '1000', 'or as an admin'],
+  ['oze', '10', 'codes are 3 to 5 characters'],
+  ['oze', '10-00', 'letters and numbers only'],
+  ['oze', null, 'a tag has both halves'],
+]) {
+  await rejects(as(C, 'select public.set_my_tag($1, $2)', [name, code]), /violates|constraint|needs/, `refused: ${what}`);
+}
+assert.equal(await tag(C, 'मीरा', '0712'), 'ok', 'names can be in any language');
+await rejects(as('anon', 'select public.set_my_tag($1, $2)', ['anon', '1000']), /permission denied/, "visitors can't pick a tag");
+assert.equal((await as(B, 'select count(*)::int as n from public.profiles where id = $1', [A])).rows[0].n, 0, "B still can't read A's profile");
+
+// Invites: stored as a hash, used once.
+const h = (n) => n.toString(16).padStart(64, 'a');
+const peek = async (who, n) => (await as(who, 'select * from public.peek_invite($1)', [h(n)])).rows[0];
+const accept = async (who, n, level = 'doing') => (await as(who, 'select public.accept_invite($1, $2) as r', [h(n), level])).rows[0].r;
+await as(A, 'select public.create_invite($1)', [h(1)]);
+assert.equal((await as(A, 'select count(*)::int as n from public.invites')).rows[0].n, 1, 'A sees their open invite');
+assert.equal((await as(B, 'select count(*)::int as n from public.invites')).rows[0].n, 0, "B can't list A's invites");
+await rejects(as(B, "insert into public.invites (token_hash, user_id, expires_at) values ($1, $2, now() + interval '30 days')", [h(9), B]), /permission denied/, 'invites are made only through create_invite');
+await rejects(as('anon', 'select * from public.peek_invite($1)', [h(1)]), /permission denied/, 'visitors must sign in to open a card');
+assert.deepEqual(await peek(B, 1), { state: 'ok', tag_name: 'Asha Rao', tag_code: 'RUN' }, 'B sees who sent the card');
+assert.equal((await peek(A, 1)).state, 'self', 'your own card');
+assert.equal((await peek(B, 77)).state, 'gone', 'an unknown card');
+assert.equal(await accept(A, 1), 'self', "A can't befriend A");
+await rejects(as(B, 'select public.accept_invite($1, $2)', [h(1), 'everything']), /unknown level/, 'only the three levels');
+assert.equal(await accept(B, 1, 'none'), 'ok', 'B swaps cards, sharing nothing back');
+assert.equal(await accept(C, 1), 'gone', 'a card works once');
+assert.deepEqual((await as(A, 'select buddy_id, level from public.buddies')).rows, [{ buddy_id: B, level: 'doing' }], "the sender starts at How I'm doing");
+assert.deepEqual((await as(B, 'select buddy_id, level from public.buddies')).rows, [{ buddy_id: A, level: 'none' }], 'B chose Just buddies');
+await as(C, 'update public.profiles set tag_name = null, tag_code = null');
+await rejects(as(C, 'select public.create_invite($1)', [h(3)]), /tag first/, 'no card without a tag');
+await tag(C, 'मीरा', '0712');
+await as(C, 'select public.create_invite($1)', [h(2)]);
+assert.equal(await accept(B, 2), 'ok', 'B and C become buddies too');
+assert.equal((await peek(A, 2)).state, 'gone', 'used cards say nothing');
+await as(A, 'select public.create_invite($1)', [h(4)]);
+assert.equal((await peek(C, 4)).state, 'ok', 'C can open a card from A');
+await as(A, 'select public.create_invite($1)', [h(5)]);
+assert.equal(await accept(C, 5), 'ok', 'and A and C become buddies');
+assert.equal((await peek(C, 4)).state, 'already', 'already buddies');
+assert.equal(await accept(C, 4), 'already', 'and accepting again changes nothing');
+await as(C, 'select public.decline_invite($1)', [h(4)]);
+assert.equal((await peek(B, 4)).state, 'gone', 'a declined card stops working');
+await as(A, 'select public.create_invite($1)', [h(6)]);
+await db.query("update public.invites set created_at = now() - interval '8 days', expires_at = now() - interval '1 day' where token_hash = $1", [h(6)]);
+assert.equal((await peek(B, 6)).state, 'gone', 'cards expire after 7 days');
+for (let n = 10; n < 20; n++) await as(A, 'select public.create_invite($1)', [h(n)]);
+await rejects(as(A, 'select public.create_invite($1)', [h(20)]), /10 open invites/, 'at most 10 open invites');
+await rejects(db.query("insert into public.invites (token_hash, user_id, expires_at) values ('not-a-hash', $1, now())", [A]), /violates/, 'refused: invites store a SHA-256 hash');
+await rejects(db.query("insert into public.invites (token_hash, user_id, expires_at) values ($2, $1, now() + interval '30 days')", [A, h(30)]), /violates/, 'refused: invites last 7 days at most');
+assert.equal((await as(A, 'delete from public.invites where token_hash = $1', [h(10)])).affectedRows, 1, 'A takes a card back');
+
+// Sharing: each side sets only its own direction, and only the level and habits.
+await as(A, "update public.buddies set level = 'habits', habits = '{german,dsa}' where buddy_id = $1", [B]);
+assert.equal((await as(B, "update public.buddies set level = 'habits' where user_id = $1", [A])).affectedRows, 0, "B can't change what A shares");
+await rejects(as(B, 'update public.buddies set buddy_id = $1 where buddy_id = $2', [C, A]), /permission denied/, "B can't move a pairing to someone else");
+await rejects(as(B, 'insert into public.buddies (user_id, buddy_id) values ($1, $2)', [B, A]), /permission denied/, 'pairs are made only by accepting a card');
+await rejects(as(A, "update public.buddies set habits = '{\"Bad Slug\"}' where buddy_id = $1", [B]), /violates/, 'refused: habit ids only');
+await rejects(as(A, "update public.buddies set level = 'all' where buddy_id = $1", [B]), /violates/, 'refused: known levels only');
+
+// Figures: your own row only, and only the agreed shape.
+const fig = (habits) => ({ as_of: '2026-10-28', week_done: 18, week_due: 24, prev_done: 12, prev_due: 24, month_done: 70, month_due: 100, run: 9, habits: JSON.stringify(habits) });
+const putFig = (who, f, owner = who) => as(who, `insert into public.buddy_figures (user_id, as_of, week_done, week_due, prev_done, prev_due, month_done, month_due, run, habits)
+  values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) on conflict (user_id) do update set habits = excluded.habits, week_done = excluded.week_done`,
+[owner, f.as_of, f.week_done, f.week_due, f.prev_done, f.prev_due, f.month_done, f.month_due, f.run, f.habits]);
+await putFig(A, fig([{ slug: 'german', name: 'German', done: 12, due: 18 }, { slug: 'dsa', name: 'DSA', done: 3, due: 4 }]));
+await rejects(putFig(B, fig([]), A), /row-level security/, "B can't write A's figures");
+assert.equal((await as(B, 'select count(*)::int as n from public.buddy_figures')).rows[0].n, 0, "B can't read A's figures directly");
+for (const [habits, what] of [
+  [[{ slug: 'german', name: 'German', done: 12, due: 18, extra: 'x' }], 'no extra fields'],
+  [[{ slug: 'Bad Slug', name: 'German', done: 1, due: 2 }], 'habit ids only'],
+  [[{ slug: 'german', name: '', done: 1, due: 2 }], 'a name'],
+  [[{ slug: 'german', name: 'German', done: 5, due: 2 }], 'done never above due'],
+  [[{ slug: 'german', name: 'German', done: '1', due: 2 }], 'numbers are numbers'],
+  [['german'], 'objects only'],
+]) {
+  await rejects(putFig(A, fig(habits)), /violates|must be/, `refused figures: ${what}`);
+}
+await rejects(putFig(A, { ...fig([]), week_done: 30 }), /violates/, 'refused: done above due');
+
+// What a buddy sees.
+const look = async (who, buddy) => (await as(who, 'select * from public.my_buddies() where buddy = $1', [buddy])).rows[0];
+let seen = await look(B, A);
+assert.equal(seen.tag_name, 'Asha Rao', 'B sees A by tag');
+assert.equal(seen.their_level, 'habits', 'at the level A chose');
+assert.deepEqual([seen.week_done, seen.week_due, seen.run], [18, 24, 9], "and A's totals");
+assert.deepEqual(seen.habits, [{ name: 'DSA', done: 3, due: 4 }, { name: 'German', done: 12, due: 18 }], 'and the habits A picked');
+assert.deepEqual((await look(C, A)).habits, [], "C, at How I'm doing, sees no habit names");
+await as(A, "update public.habits set private = true where slug = 'dsa'");
+seen = await look(B, A);
+assert.deepEqual(seen.habits.map((x) => x.name), ['German'], 'a private habit never shows, even if picked');
+await as(A, "update public.buddies set level = 'doing' where buddy_id = $1", [B]);
+seen = await look(B, A);
+assert.deepEqual(seen.habits, [], "How I'm doing: no habit names");
+assert.equal(seen.week_done, 18, 'but the totals');
+await as(A, "update public.buddies set level = 'none' where buddy_id = $1", [B]);
+seen = await look(B, A);
+assert.deepEqual([seen.week_done, seen.as_of, seen.run, seen.habits], [null, null, null, []], 'Just buddies: nothing about habits');
+assert.equal((await look(A, B)).their_level, 'none', 'and B shares nothing back, as chosen');
+await rejects(as('anon', 'select * from public.my_buddies()'), /permission denied/, 'visitors see nothing');
+
+// Removing: both directions, at once, by either side.
+await as(A, "update public.buddies set level = 'habits' where buddy_id = $1", [B]);
+await as(B, 'select public.remove_buddy($1)', [A]);
+assert.equal(await look(B, A), undefined, 'B no longer sees A');
+assert.equal(await look(A, B), undefined, 'nor A sees B');
+assert.equal((await db.query('select count(*)::int as n from public.buddies where (user_id = $1 and buddy_id = $2) or (user_id = $2 and buddy_id = $1)', [A, B])).rows[0].n, 0, 'both rows are gone');
+assert.ok(await look(B, C), "other pairs aren't touched");
+assert.equal(await look(B, A), undefined, 'and a stranger (A to B now) sees nothing');
+// Half a pair (only possible by hand) shows nothing.
+await db.query('delete from public.buddies where user_id = $1 and buddy_id = $2', [C, A]);
+assert.equal(await look(A, C), undefined, 'a pair needs both rows');
+
 // Removing a habit from a month removes its ticks; deleting the account removes everything.
 await as(A, `delete from public.habit_months where slug = 'dsa' and month = '2026-10-01'`);
 assert.equal((await as(A, `select count(*)::int as n from public.ticks where slug = 'dsa'`)).rows[0].n, 0, 'ticks go with their habit month');
@@ -183,7 +315,7 @@ assert.equal((await db.query(`select count(*)::int as n from auth.users where id
 assert.ok((await db.query(`select count(*)::int as n from public.ticks where user_id = '${A}'`)).rows[0].n > 0, "A's ticks are untouched");
 await as(A, 'select public.delete_my_account()');
 assert.equal((await db.query(`select count(*)::int as n from public.profiles where id = '${A}'`)).rows[0].n, 0, 'account deletion clears the profile');
-for (const t of ['years', 'habits', 'months', 'habit_months', 'ticks', 'push_settings', 'push_subscriptions', 'push_log', 'push_actions']) {
+for (const t of ['years', 'habits', 'months', 'habit_months', 'ticks', 'push_settings', 'push_subscriptions', 'push_log', 'push_actions', 'invites', 'buddies', 'buddy_figures']) {
   assert.equal((await db.query(`select count(*)::int as n from public.${t} where user_id = '${A}'`)).rows[0].n, 0, `account deletion clears ${t}`);
 }
 await rejects(as(A, `insert into public.years (user_id, year) values ($1, 2027)`, [A]), /foreign key/, "a deleted account can't write again with its old token");
