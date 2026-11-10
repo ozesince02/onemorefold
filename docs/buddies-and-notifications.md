@@ -27,6 +27,40 @@ blocking (removing is enough), end-to-end encryption (parked, see [vision.md](vi
 The goal throughout: support, not monitoring. Nobody should feel watched, pressured, or flooded
 with notifications.
 
+## The look: Flock (settled 11 November 2026, D-044)
+
+Buddies and gangs share one home and one set of paper objects. Sketched with the owner on
+11 November; the mockups were rough and only the choices below are settled.
+
+- **A fourth tab, "Flock"**, after Month, Year and Habits; the page carries a ナカマ (nakama,
+  "the people you're in it with") sticker. Month, Year and Habits stay about your own folds, so
+  nobody sees a buddy's numbers by glancing at their own month.
+  - **Desktop:** buddies on the left, gangs on the right. **Phones:** gangs first (they change
+    every day), buddy cards scroll sideways.
+  - **Signed out:** the tab still shows, with one slip: sign in to hand over your card. No tag is
+    asked for until then.
+- **Your tag is a hanko.** The `TAG` half of `name#TAG` is drawn as a round red seal. It marks you
+  everywhere in Flock, and sits in the account chit with "Change your card".
+- **Buddies are name cards (meishi).** Adding one is "hand over your card" (the invite link); each
+  buddy is a card with their tag, the figures their level allows, and the trend. A buddy at "Just
+  buddies" gets a plain card with no figures.
+- **A gang folds one crane together.** Each member's tick today is one fold of the gang's crane;
+  when everyone has folded, it's done (a sticker, and an optional push). The gang view **names who
+  hasn't folded yet today** ("4 of 5 folded today. Ravi hasn't yet."): the owner's call.
+- **The gang's banner.** A nobori banner with the challenge in katakana collects each day's hanko
+  stamps (a dashed seal for anyone still to fold). When the challenge ends it rolls up into a
+  keepsake on the Year view, beside the wish.
+- **On the pages that exist:** a gang habit is an ordinary habit in your list, with a small stamp
+  row beside it in Today and before its name in the grid; your own "Today's crane" stays yours.
+  Habits gets a "Private" lock, a "Shared with ..." label and "Fold it with friends", the main way
+  to start a gang from a habit (also possible from Flock).
+- **Invite previews stay generic.** The invite's secret sits after `#`, so the server never sees
+  it, nor who sent it. A shared link shows the same warm card for everyone; the sender's tag
+  appears only once the link is opened.
+
+Still open: whether the daily summary also names who hasn't folded (the suggestion: only the Flock
+tab names people; summaries say "4 of 5").
+
 ## 1. Notifications with the app closed
 
 ### How they reach a closed app

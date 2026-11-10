@@ -841,3 +841,24 @@ Accepted · 4 Nov 2026 · changes D-028's "each device opts in"
   changes by itself must. A notice drops out after its last day. Closing it lasts one visit; the
   next visit hangs it again, so nothing is stored any more (the old "closed" key is cleared).
 
+
+## D-044 Flock: where buddies and gangs live, and how they look
+Accepted · 11 Nov 2026 · builds on D-029 and D-030
+
+- **Context:** before building buddies and gangs, the owner wanted to see where they'd sit and how
+  they'd look. Three directions each were sketched; the owner picked name cards for buddies and,
+  for gangs, one shared crane plus a banner of stamps.
+- **Decision:**
+  - **A fourth tab, "Flock".** Cranes fly in flocks; it's one short word that reads at a glance
+    beside Month, Year and Habits. "Together" was too generic, "Nakama" too hard to decode as a
+    tab name, so ナカマ became the page's sticker instead.
+  - **The hanko** (a round seal of your `TAG`) is the one mark for a person throughout Flock.
+  - **Buddies are meishi;** adding one is handing over your card.
+  - **A gang folds one crane together** and keeps a **stamp banner** day by day, which becomes a
+    keepsake on the Year view when the challenge ends.
+  - **The gang names who hasn't folded yet today.** Softer options (counts only) were offered; the
+    owner wants members to see it, as with buddies noticing someone has gone quiet (D-029).
+- **Not changed:** buddies still see totals and trends, never day grids; a gang member sees only
+  that gang's habit; nothing in a shared link's preview identifies the sender.
+- Details in [buddies-and-notifications.md](buddies-and-notifications.md), "The look: Flock".
+
