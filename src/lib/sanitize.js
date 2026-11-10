@@ -92,6 +92,13 @@ export function cleanState(input) {
 
   const out = { version: 1, colors, months, years: cleanYears(input, keys) };
 
+  // Habits kept from every buddy (D-029): { id: true }, left out when there are none.
+  if (isObject(input.private)) {
+    const priv = {};
+    for (const id of Object.keys(input.private)) if (isId(id) && input.private[id] === true) priv[id] = true;
+    if (Object.keys(priv).length) out.private = priv;
+  }
+
   if (isObject(input.prefs)) {
     out.prefs = { percentView: VIEWS.includes(input.prefs.percentView) ? input.prefs.percentView : 'days' };
   }

@@ -5,6 +5,14 @@
 export const NOTE_SIGN = 'oze, who made One More Fold';
 
 export const NOTES = {
+  buddies: {
+    title: 'Why buddies?',
+    body: [
+      "I built One More Fold for my eighth try, and the tries that lasted were never the ones I made alone. A friend who notices you've gone quiet and asks \"everything okay?\" is worth more than any streak.",
+      "So buddies aren't followers, and this isn't a feed. Add the people you'd text anyway. Share as much or as little as you like, and keep any habit private.",
+      "If you see a friend's folds slowing down, don't nudge them here: call them.",
+    ],
+  },
   'patch-notes': {
     title: 'Why patch notes?',
     body: [
