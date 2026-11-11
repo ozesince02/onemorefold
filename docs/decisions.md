@@ -897,3 +897,41 @@ Accepted · 11 Nov 2026 · builds on D-029 and D-044
 - **Release order:** the migration (`20261111120000_buddies.sql`) must be run before the site that
   uses it ships. Syncing writes the new `private` column, so the old database would refuse it.
 
+
+## D-046 Gangs: a habit linked to the gang, ticks read live
+Accepted · 12 Nov 2026 · builds on D-030 and D-044
+
+- **Context:** a gang shows today's crane, who hasn't folded yet, a banner of daily stamps and each
+  member's figures. Unlike a buddy's totals, that needs day-level ticks on one habit, as they
+  happen.
+- **Decision: your part of a gang is one of your habits,** linked to it (`habits.challenge_id`).
+  - **Reading:** `my_gangs()` returns, for the gangs you're in, each member's ticks on their linked
+    habit between the gang's dates. It returns nothing from any other habit, and nothing from a
+    habit marked private. The app works out the crane, the stamps and the figures from those ticks
+    with the tracker's own schedule maths (`src/lib/gangs.js`), so it never disagrees with
+    anyone's grid.
+  - **Linking:** you can link a habit only to a gang you're in, and only one per gang. Anything
+    else is quietly unlinked by the database rather than refused, so a device that hasn't heard you
+    left can still sync the rest of the tracker.
+- **The gang's rules (D-030):**
+  - **Size:** 2 to 10 members, at most 20 gangs a person.
+  - **Dates:** a week to a year, starting between today and a month ahead.
+  - **Schedule:** any of the tracker's schedules, fixed once started.
+  - **Owner:** the person who starts it can rename it, make it last longer (never shorter) and
+    remove people. When the owner leaves, whoever has been in longest takes over; when the last
+    person leaves, the gang is gone.
+  - **Joining:** with a gang card, the same one-time link as buddies (members needn't be buddies).
+    Joining adds the habit to your tracker. Leaving unlinks it; the habit and its ticks stay yours.
+- **Who hasn't folded:** named on the gang in Flock, as the owner asked (D-044). Only members with
+  a linked habit count, and only on days the schedule asks for a fold. Flexible schedules count
+  "this week" or "this month".
+- **Cards hashed by the database:** the browser now sends the card's secret, and the database
+  stores its SHA-256. A stored hash can no longer be used in place of the secret (review of
+  11 Nov 2026).
+- **Not in this step:**
+  - the closing card when a gang ends, and its banner kept on the Year view;
+  - gangs in the daily summary;
+  - a push when the gang's crane is done.
+- **Release order:** run `20261112120000_gangs.sql` before the site that uses it ships. Sync writes
+  `habits.challenge_id`, and the card functions change their arguments.
+

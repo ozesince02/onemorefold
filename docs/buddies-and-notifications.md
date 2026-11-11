@@ -219,6 +219,10 @@ Inspired by gamer tags (Valorant's Riot ID): a name and a short tag, joined by `
 
 ## 4. Buddy and gang challenges
 
+**Gangs built 12 November 2026 (D-046):** starting, joining by card, today's crane naming who
+hasn't folded, the stamp banner, members' figures, the owner's controls and leaving. Still to come:
+the closing card and Year keepsake, and gangs in the summaries.
+
 One idea covers both: a buddy challenge is a challenge with two members, a group (gang) challenge
 has more.
 

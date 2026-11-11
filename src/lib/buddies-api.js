@@ -2,20 +2,20 @@
 // functions in supabase/migrations/20261111120000_buddies.sql, which act only for the signed-in
 // person. Errors come back as fixed, readable messages; nothing from the server is shown as is.
 import { LEVELS } from './buddies.js';
+import { groupGangs, GANG_NAME_MAX } from './gangs.js';
+import { CADENCES } from './schedule.js';
 
 const ID = /^[0-9a-f-]{36}$/;
 const SLUG = /^[a-z0-9][a-z0-9-]{0,63}$/;
-// The invite's secret: 32 random bytes, base64url. It travels only after '#' in the link.
+// The invite's secret: 32 random bytes, base64url. It travels only after '#' in the link; the
+// database stores only its SHA-256, worked out there (D-046).
 export const CARD_TOKEN = /^[A-Za-z0-9_-]{43}$/;
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 const fail = (text) => { throw new Error(text); };
 const check = ({ data, error }, text) => (error ? fail(text) : data);
 
 const toB64url = (bytes) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-export async function hashOf(token) {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
-}
 
 // Your tag, or null before you've chosen one.
 export async function loadMyTag(sb, userId) {
@@ -29,11 +29,12 @@ export async function saveMyTag(sb, name, code) {
   return result === 'taken' ? 'taken' : 'ok';
 }
 
-// A new one-time card: { token, until }. Only the token's hash leaves this browser.
-export async function createCard(sb) {
+// A new one-time card: { token, until }. With a gang id, it invites to that gang.
+export async function createCard(sb, gang = null) {
   const token = toB64url(crypto.getRandomValues(new Uint8Array(32)));
-  const until = check(await sb.rpc('create_invite', { p_hash: await hashOf(token) }), "A new card couldn't be made. You can have 10 open at a time.");
-  return { token, until: Date.parse(until) };
+  const args = gang && ID.test(gang) ? { p_token: token, p_challenge: gang } : { p_token: token };
+  const until = check(await sb.rpc('create_invite', args), "A new card couldn't be made. You can have 10 open at a time.");
+  return { token, until: Date.parse(until), gang: args.p_challenge || null };
 }
 
 // Your open cards: [{ hash, until }], newest first.
@@ -48,25 +49,64 @@ export async function takeBackCard(sb, hash) {
   check(await sb.from('invites').delete().eq('token_hash', hash), "That card couldn't be taken back. Try again.");
 }
 
-// What a card someone handed you says: { state: 'ok' | 'gone' | 'self' | 'already', name, code }.
+const STATES = ['ok', 'gone', 'self', 'already', 'full', 'ended'];
+
+// What a card someone handed you says:
+//   { state: 'ok' | 'gone' | 'self' | 'already' | 'full' | 'ended', kind: 'buddy' | 'gang', name, code,
+//     gang?: { name, cadence, weekdays, timesPerWeek, starts, ends, members } }
 export async function peekCard(sb, token) {
   if (!CARD_TOKEN.test(token)) return { state: 'gone' };
-  const rows = check(await sb.rpc('peek_invite', { p_hash: await hashOf(token) }), "Couldn't open the card. Check your connection.");
+  const rows = check(await sb.rpc('peek_invite', { p_token: token }), "Couldn't open the card. Check your connection.");
   const row = rows?.[0];
-  const state = ['ok', 'gone', 'self', 'already'].includes(row?.state) ? row.state : 'gone';
-  return { state, name: row?.tag_name || '', code: row?.tag_code || '' };
+  const state = STATES.includes(row?.state) ? row.state : 'gone';
+  const card = { state, kind: row?.kind === 'gang' ? 'gang' : 'buddy', name: row?.tag_name || '', code: row?.tag_code || '' };
+  if (card.kind === 'gang' && CADENCES.includes(row.cadence) && DAY.test(row.starts) && DAY.test(row.ends)) {
+    card.gang = {
+      name: String(row.gang_name || '').slice(0, GANG_NAME_MAX),
+      cadence: row.cadence,
+      weekdays: row.cadence === 'weekdays' ? (row.weekdays || []).filter((w) => Number.isInteger(w) && w >= 1 && w <= 7) : undefined,
+      timesPerWeek: row.cadence === 'times_per_week' ? Math.min(7, Math.max(1, Number(row.times_per_week) || 1)) : undefined,
+      starts: row.starts, ends: row.ends, members: Number(row.members) || 0,
+    };
+  } else if (card.kind === 'gang') card.state = 'gone';
+  return card;
 }
 
-// 'ok' | 'gone' | 'self' | 'already' | 'full'.
-export async function acceptCard(sb, token, level) {
+// 'ok' | 'gone' | 'self' | 'already' | 'full' | 'ended'. The level only matters for buddy cards.
+export async function acceptCard(sb, token, level = 'doing') {
   if (!CARD_TOKEN.test(token) || !LEVELS.includes(level)) return 'gone';
-  const r = check(await sb.rpc('accept_invite', { p_hash: await hashOf(token), p_level: level }), "The cards couldn't be swapped. Try again.");
-  return ['ok', 'gone', 'self', 'already', 'full'].includes(r) ? r : 'gone';
+  const r = check(await sb.rpc('accept_invite', { p_token: token, p_level: level }), "That card couldn't be accepted. Try again.");
+  return STATES.includes(r) ? r : 'gone';
 }
 
 export async function declineCard(sb, token) {
   if (!CARD_TOKEN.test(token)) return;
-  await sb.rpc('decline_invite', { p_hash: await hashOf(token) });
+  await sb.rpc('decline_invite', { p_token: token });
+}
+
+// ---------- Gangs (D-046) ----------
+export const loadGangs = async (sb) => groupGangs(check(await sb.rpc('my_gangs'), "Couldn't load your gangs. Check your connection."));
+
+// Start a gang: { name, cadence, weekdays, timesPerWeek, starts, ends }. Returns its id.
+export async function createGang(sb, g) {
+  const id = check(await sb.rpc('create_gang', {
+    p_name: g.name, p_cadence: g.cadence, p_weekdays: g.cadence === 'weekdays' ? g.weekdays : null,
+    p_times: g.cadence === 'times_per_week' ? g.timesPerWeek : null, p_starts: g.starts, p_ends: g.ends,
+  }), "The gang couldn't be started. Check its name and dates.");
+  return ID.test(id || '') ? id : fail("The gang couldn't be started.");
+}
+
+export async function editGang(sb, id, name, ends) {
+  if (!ID.test(id)) return;
+  check(await sb.rpc('edit_gang', { p_challenge: id, p_name: name, p_ends: ends }), "That couldn't be saved. Try again.");
+}
+export async function leaveGang(sb, id) {
+  if (!ID.test(id)) return;
+  check(await sb.rpc('leave_gang', { p_challenge: id }), "Couldn't leave just now. Try again.");
+}
+export async function removeMember(sb, id, user) {
+  if (!ID.test(id) || !ID.test(user)) return;
+  check(await sb.rpc('remove_member', { p_challenge: id, p_user: user }), "Couldn't remove them just now. Try again.");
 }
 
 const num = (v) => (Number.isInteger(v) && v >= 0 ? v : null);

@@ -26,7 +26,7 @@ export function stateToRows(state) {
   const put = (table, row) => { rows[keyOf(table, row)] = { table, row }; };
   const ids = new Set(Object.keys(state.colors || {}));
   for (const month of Object.values(state.months)) month.habits.forEach((h) => ids.add(h.id));
-  for (const id of [...ids].sort()) put('habits', { slug: id, color: state.colors?.[id] || DEFAULT_COLOR, private: state.private?.[id] === true });
+  for (const id of [...ids].sort()) put('habits', { slug: id, color: state.colors?.[id] || DEFAULT_COLOR, private: state.private?.[id] === true, challenge_id: state.links?.[id] || null });
 
   for (const [key, month] of Object.entries(state.months)) {
     const { y, m } = parseKey(key);
@@ -60,9 +60,11 @@ export function stateToRows(state) {
 export function rowsToState(tables, local = {}) {
   const colors = {};
   const priv = {};
+  const links = {};
   for (const h of tables.habits || []) {
     colors[h.slug] = h.color;
     if (h.private === true) priv[h.slug] = true;
+    if (h.challenge_id) links[h.slug] = h.challenge_id;
   }
   const months = {};
   for (const r of tables.months || []) months[r.month.slice(0, 7)] = { habits: [], checks: {} };
@@ -91,6 +93,7 @@ export function rowsToState(tables, local = {}) {
     version: 1,
     colors,
     ...(Object.keys(priv).length ? { private: priv } : {}),
+    ...(Object.keys(links).length ? { links } : {}),
     months,
     years,
     prefs: { percentView: prefs?.percentView || 'days' },
@@ -132,6 +135,11 @@ export function mergeStates(account, local) {
   for (const [id, c] of Object.entries(local.colors || {})) if (!out.colors[id]) out.colors[id] = c;
   // Private on either side stays private: the safer way to combine them.
   for (const id of Object.keys(local.private || {})) (out.private ||= {})[id] = true;
+  // Gang links: the account's, plus this browser's for gangs the account has no habit for.
+  const taken = new Set(Object.values(out.links || {}));
+  for (const [id, gang] of Object.entries(local.links || {})) {
+    if (!out.links?.[id] && !taken.has(gang)) { (out.links ||= {})[id] = gang; taken.add(gang); }
+  }
   for (const [y, rec] of Object.entries(local.years || {})) {
     const a = out.years[y] || {};
     out.years[y] = { wish: a.wish || rec.wish || '', foldedAt: a.foldedAt || rec.foldedAt };
