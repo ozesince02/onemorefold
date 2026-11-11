@@ -447,6 +447,50 @@ td.is-today .cell:not([aria-pressed="true"]) { outline: 2px solid var(--ink); ou
 .card-from h2 { font-family: var(--display); font-weight: 400; font-size: 24px; overflow-wrap: anywhere; }
 .edit-row .private-toggle { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; font-weight: 500; font-size: 14px; cursor: pointer; }
 .edit-row .private-toggle input { width: 18px; height: 18px; padding: 0; flex: none; accent-color: var(--accent); }
+/* Gangs (D-046): today's crane folded one fold per member, and the banner of stamps */
+.flock-gangs .panel-head { flex-wrap: wrap; }
+.gangs-head-side { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.gang-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px 16px; align-items: end; margin-bottom: 20px; padding: 16px; background: var(--bg); }
+.gang-form .wide { grid-column: 1 / -1; }
+.gang-form label { display: grid; gap: 4px; font-size: 13px; font-weight: 700; color: var(--ink-2); }
+.gang-form input, .gang-form select, .gang-edit input { font: inherit; font-size: 16px; padding: 8px 10px; border: 0; border-bottom: 2px solid var(--ink); border-radius: 0; background: var(--sheet); color: var(--ink); min-width: 0; }
+.gang-form input:focus, .gang-form select:focus, .gang-edit input:focus { outline: 2px solid var(--link); outline-offset: 0; }
+.gang-days { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px 12px; grid-column: 1 / -1; }
+.gang-days label { display: flex; align-items: center; gap: 4px; font-size: 14px; }
+.gang-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 20px; }
+.gang { display: grid; gap: 14px; align-content: start; padding: 16px 18px 18px; background: var(--sheet); border: 2px solid var(--bg-3); }
+.gang h3 { font-family: var(--display); font-weight: 400; font-size: 22px; line-height: 1.15; overflow-wrap: anywhere; }
+.gang-today { display: flex; align-items: center; gap: 16px; }
+.gang-today-main { font-weight: 900; font-size: 17px; }
+.gang-crane { width: 96px; height: auto; flex: none; }
+.gang-crane-paper { fill: var(--bg-2); stroke: var(--ink-3); stroke-width: .6; stroke-dasharray: 2 2; }
+.gang-crane-folded { fill: var(--accent); }
+.gang-unlinked { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; padding: 10px 12px; background: var(--bg); font-size: 14px; font-weight: 700; }
+.gang-banner { display: flex; gap: 10px; align-items: stretch; }
+.nobori { flex: none; width: 34px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 8px 0; background: var(--ai); color: var(--on-color); font-family: var(--display); font-size: 17px; line-height: 1.05; }
+.stamps-scroll { overflow-x: auto; min-width: 0; flex: 1; }
+.stamps { border-collapse: collapse; font-size: 13px; }
+.stamps th, .stamps td { padding: 4px 3px; text-align: center; }
+.stamps thead th { font-weight: 700; color: var(--ink-2); line-height: 1.1; }
+.stamps thead small { display: block; font-weight: 500; color: var(--ink-3); }
+.stamps tbody th { display: flex; align-items: center; gap: 8px; text-align: left; font-weight: 700; white-space: nowrap; padding-right: 10px; }
+.stamps tbody th em { font-style: normal; font-weight: 500; color: var(--ink-3); font-size: 12px; }
+.stamp-name { max-width: 12ch; overflow: hidden; text-overflow: ellipsis; }
+.stamp { display: inline-block; width: 18px; height: 18px; border-radius: 50%; border: 2px dashed var(--ink-3); vertical-align: middle; }
+.stamp--on { border: 2.5px solid var(--accent); background: var(--accent); rotate: -10deg; }
+.stamp--rest { border: 0; width: 6px; height: 6px; background: var(--bg-3); }
+.stamps td.stamp-sum { text-align: left; white-space: nowrap; color: var(--ink-2); padding-left: 10px; }
+.hanko--small { width: 30px; height: 30px; font-size: 9px; border-width: 2px; }
+.gang-settings summary { cursor: pointer; font-weight: 700; color: var(--link); }
+.gang-settings[open] { display: grid; gap: 10px; justify-items: start; }
+.gang-settings[open] summary { margin-bottom: 4px; }
+.gang-edit { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 14px; padding: 12px; background: var(--bg); justify-self: stretch; }
+.gang-edit label { display: grid; gap: 4px; font-size: 13px; font-weight: 700; color: var(--ink-2); }
+.gang-edit .note { flex-basis: 100%; }
+.gang-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 14px; }
+.gang-mark { display: inline-block; padding: 0 6px; border-radius: 999px; background: var(--inverse); color: var(--on-inverse); font-size: 11px; font-weight: 700; line-height: 1.5; vertical-align: 1px; }
+.edit-row .gang-note { font-weight: 500; }
+.edit-row .gang-note .seg-link { margin-right: 6px; }
 @media (max-width: 760px) {
   .flock-why { grid-row: auto; grid-column: 1; }
   .meishi-grid { grid-template-columns: 1fr; }

@@ -3,6 +3,26 @@
 What changed, for people using the app. Why it changed lives in [docs/decisions.md](docs/decisions.md).
 Dates are when the work landed.
 
+## Unreleased
+
+### Added
+- **Gangs** in Flock (D-046): a habit two to ten people take on together, each ticking their own.
+  - **Starting one:** from Flock, or "Fold it with friends" on any habit. Pick a schedule and a
+    week to 90 days.
+  - **Joining:** hand out a one-time card. Joining adds the habit to your tracker.
+  - **Each gang shows:**
+    - today's crane, folded one fold per member, with who hasn't folded yet;
+    - a banner of the last week's hanko stamps;
+    - each member's figures so far.
+  - **Members see** each other's ticks on that habit and nothing else. A gang's habit wears a small
+    "gang" mark in the tracker.
+  - **The person running it** can rename it, make it longer and remove people. Leaving keeps the
+    habit and its ticks yours.
+
+### Changed
+- Card links are checked by the database from their secret, rather than from a hash the browser
+  sends.
+
 ## 0.16.0 — 11 November 2026
 
 ### Added

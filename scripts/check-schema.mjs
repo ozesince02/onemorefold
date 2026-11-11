@@ -2,6 +2,7 @@
 // each user sees and changes only their own rows, signed-out visitors get nothing, and the
 // database refuses data the app would refuse. Supabase's auth schema and roles are stood in for.
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { supabaseStandIn } from './lib/supabase-stand-in.mjs';
 
 const { db, as, addUser } = await supabaseStandIn();
@@ -203,15 +204,20 @@ await rejects(as('anon', 'select public.set_my_tag($1, $2)', ['anon', '1000']), 
 assert.equal((await as(B, 'select count(*)::int as n from public.profiles where id = $1', [A])).rows[0].n, 0, "B still can't read A's profile");
 
 // Invites: stored as a hash, used once.
-const h = (n) => n.toString(16).padStart(64, 'a');
+// Cards are 43-character secrets; the database stores only their SHA-256 (since D-046).
+const h = (n) => n.toString(16).padStart(43, 'a');
+const hashed = (n) => createHash('sha256').update(h(n)).digest('hex');
 const peek = async (who, n) => (await as(who, 'select * from public.peek_invite($1)', [h(n)])).rows[0];
 const accept = async (who, n, level = 'doing') => (await as(who, 'select public.accept_invite($1, $2) as r', [h(n), level])).rows[0].r;
 await as(A, 'select public.create_invite($1)', [h(1)]);
 assert.equal((await as(A, 'select count(*)::int as n from public.invites')).rows[0].n, 1, 'A sees their open invite');
 assert.equal((await as(B, 'select count(*)::int as n from public.invites')).rows[0].n, 0, "B can't list A's invites");
-await rejects(as(B, "insert into public.invites (token_hash, user_id, expires_at) values ($1, $2, now() + interval '30 days')", [h(9), B]), /permission denied/, 'invites are made only through create_invite');
+await rejects(as(B, "insert into public.invites (token_hash, user_id, expires_at) values ($1, $2, now() + interval '30 days')", [hashed(9), B]), /permission denied/, 'invites are made only through create_invite');
 await rejects(as('anon', 'select * from public.peek_invite($1)', [h(1)]), /permission denied/, 'visitors must sign in to open a card');
-assert.deepEqual(await peek(B, 1), { state: 'ok', tag_name: 'Asha Rao', tag_code: 'RUN' }, 'B sees who sent the card');
+const card1 = await peek(B, 1);
+assert.deepEqual([card1.state, card1.kind, card1.tag_name, card1.tag_code], ['ok', 'buddy', 'Asha Rao', 'RUN'], 'B sees who sent the card');
+assert.equal(card1.gang_name, null, 'a buddy card says nothing about gangs');
+await rejects(as(B, 'select * from public.peek_invite($1)', [hashed(1)]), /not a card/, 'the stored hash is not a card');
 assert.equal((await peek(A, 1)).state, 'self', 'your own card');
 assert.equal((await peek(B, 77)).state, 'gone', 'an unknown card');
 assert.equal(await accept(A, 1), 'self', "A can't befriend A");
@@ -235,13 +241,13 @@ assert.equal(await accept(C, 4), 'already', 'and accepting again changes nothing
 await as(C, 'select public.decline_invite($1)', [h(4)]);
 assert.equal((await peek(B, 4)).state, 'gone', 'a declined card stops working');
 await as(A, 'select public.create_invite($1)', [h(6)]);
-await db.query("update public.invites set created_at = now() - interval '8 days', expires_at = now() - interval '1 day' where token_hash = $1", [h(6)]);
+await db.query("update public.invites set created_at = now() - interval '8 days', expires_at = now() - interval '1 day' where token_hash = $1", [hashed(6)]);
 assert.equal((await peek(B, 6)).state, 'gone', 'cards expire after 7 days');
 for (let n = 10; n < 20; n++) await as(A, 'select public.create_invite($1)', [h(n)]);
 await rejects(as(A, 'select public.create_invite($1)', [h(20)]), /10 open invites/, 'at most 10 open invites');
 await rejects(db.query("insert into public.invites (token_hash, user_id, expires_at) values ('not-a-hash', $1, now())", [A]), /violates/, 'refused: invites store a SHA-256 hash');
-await rejects(db.query("insert into public.invites (token_hash, user_id, expires_at) values ($2, $1, now() + interval '30 days')", [A, h(30)]), /violates/, 'refused: invites last 7 days at most');
-assert.equal((await as(A, 'delete from public.invites where token_hash = $1', [h(10)])).affectedRows, 1, 'A takes a card back');
+await rejects(db.query("insert into public.invites (token_hash, user_id, expires_at) values ($2, $1, now() + interval '30 days')", [A, hashed(30)]), /violates/, 'refused: invites last 7 days at most');
+assert.equal((await as(A, 'delete from public.invites where token_hash = $1', [hashed(10)])).affectedRows, 1, 'A takes a card back');
 
 // Sharing: each side sets only its own direction, and only the level and habits.
 await as(A, "update public.buddies set level = 'habits', habits = '{german,dsa}' where buddy_id = $1", [B]);
@@ -304,6 +310,139 @@ assert.equal(await look(B, A), undefined, 'and a stranger (A to B now) sees noth
 await db.query('delete from public.buddies where user_id = $1 and buddy_id = $2', [C, A]);
 assert.equal(await look(A, C), undefined, 'a pair needs both rows');
 
+// Gangs (D-030, D-044, D-046): a habit taken on together, each ticking their own; members see each
+// other's ticks on that one habit between the gang's dates, and nothing else.
+const T = (await db.query('select current_date::text as d')).rows[0].d;
+const M = `${T.slice(0, 8)}01`;
+const plus = async (n) => (await db.query('select (current_date + $1::int)::text as d', [n])).rows[0].d;
+const habitIn = async (who, slug, gang = null) => {
+  await as(who, 'insert into public.habits (user_id, slug, challenge_id) values ($1, $2, $3) on conflict (user_id, slug) do update set challenge_id = excluded.challenge_id', [who, slug, gang]);
+  await as(who, 'insert into public.months (user_id, month) values ($1, $2) on conflict do nothing', [who, M]);
+  await as(who, 'insert into public.habit_months (user_id, slug, month, name) values ($1, $2, $3, $2) on conflict do nothing', [who, slug, M]);
+};
+const linkOf = async (who, slug) => (await as(who, 'select challenge_id from public.habits where slug = $1', [slug])).rows[0]?.challenge_id ?? null;
+const gangs = async (who) => (await as(who, 'select * from public.my_gangs()')).rows;
+const makeGang = async (who, name = 'Run club', cadence = 'daily', weekdays = null, times = null, from = 0, to = 29) =>
+  (await as(who, 'select public.create_gang($1, $2, $3, $4, $5, $6) as id', [name, cadence, weekdays, times, await plus(from), await plus(to)])).rows[0].id;
+
+await as(A, 'delete from public.invites'); // A's buddy cards from above would hit the limit of 10
+const run = await makeGang(A);
+assert.match(run, /^[0-9a-f-]{36}$/, 'A starts a gang');
+let g = await gangs(A);
+assert.deepEqual([g.length, g[0].name, g[0].owner, g[0].me, g[0].linked], [1, 'Run club', true, true, false], 'A is its owner, not linked to a habit yet');
+for (const [args, what] of [
+  [['', 'daily', null, null, 0, 29], 'a name'],
+  [['Run', 'daily', null, null, 0, 3], 'at least a week'],
+  [['Run', 'daily', null, null, 0, 400], 'at most a year'],
+  [['Run', 'hourly', null, null, 0, 29], 'known schedules only'],
+  [['Run', 'daily', null, null, 60, 90], 'starts within a month'],
+  [['Run\nclub', 'daily', null, null, 0, 29], 'no control characters'],
+]) {
+  await rejects(as(A, 'select public.create_gang($1, $2, $3, $4, $5, $6)', [args[0], args[1], args[2], args[3], await plus(args[4]), await plus(args[5])]), /violates|starts between/, `refused gang: ${what}`);
+}
+const gym = await makeGang(A, 'Gym', 'weekdays', [1, 3, 5]);
+assert.deepEqual((await gangs(A)).find((r) => r.challenge === gym).weekdays, [1, 3, 5], 'chosen days are kept');
+await as(A, 'select public.leave_gang($1)', [gym]);
+assert.equal((await db.query('select count(*)::int as n from public.challenges where id = $1', [gym])).rows[0].n, 0, 'the last one out takes the gang with them');
+
+// Links: only to a gang you're in, once.
+await habitIn(A, 'run', run);
+assert.equal(await linkOf(A, 'run'), run, "A's Run habit is A's part of the gang");
+await habitIn(A, 'jog', run);
+assert.equal(await linkOf(A, 'jog'), null, 'one habit per gang: a second link is dropped, not refused');
+await habitIn(B, 'run', run);
+assert.equal(await linkOf(B, 'run'), null, "B can't link to a gang B isn't in");
+assert.deepEqual(await gangs(B), [], "B can't see A's gang");
+await rejects(as(B, 'select * from public.challenges'), /permission denied/, 'gangs are read only through my_gangs');
+await rejects(as(A, 'insert into public.challenge_members (challenge_id, user_id) values ($1, $2)', [run, B]), /permission denied/, 'nobody adds members by hand');
+await rejects(as('anon', 'select * from public.my_gangs()'), /permission denied/, 'visitors see no gangs');
+await rejects(as('anon', 'select public.create_gang($1, $2, $3, $4, $5, $6)', ['x', 'daily', null, null, T, await plus(10)]), /permission denied/, 'visitors start no gangs');
+
+// A gang card.
+await rejects(as(B, 'select public.create_invite($1, $2)', [h(40), run]), /not in that gang/, "B can't hand out cards for A's gang");
+await as(A, 'select public.create_invite($1, $2)', [h(40), run]);
+const gcard = await peek(B, 40);
+assert.deepEqual([gcard.state, gcard.kind, gcard.gang_name, gcard.cadence, gcard.members, gcard.tag_name], ['ok', 'gang', 'Run club', 'daily', 1, 'Asha Rao'], 'B sees the gang on the card');
+assert.equal(await accept(B, 40, null), 'ok', 'B joins');
+assert.equal((await peek(C, 40)).state, 'gone', 'a gang card works once');
+assert.equal(await accept(B, 40), 'gone', 'and not twice');
+await as(A, 'select public.create_invite($1, $2)', [h(41), run]);
+assert.equal((await peek(B, 41)).state, 'already', 'already in');
+
+// What members see: each other's ticks on the linked habit, in the gang's dates, nothing more.
+await habitIn(B, 'run', run);
+assert.equal(await linkOf(B, 'run'), run, 'now B can link');
+await habitIn(B, 'diary');
+await as(B, 'insert into public.ticks (user_id, slug, day) values ($1, $2, $3), ($1, $4, $3)', [B, 'run', T, 'diary']);
+g = await gangs(A);
+const bRow = g.find((r) => r.member === B);
+assert.deepEqual([bRow.tag_name, bRow.owner, bRow.me, bRow.linked], ['Ravi', false, false, true], 'A sees B in the gang');
+assert.deepEqual(bRow.days.map((d) => (typeof d === 'string' ? d : d.toISOString().slice(0, 10))), [T], "B's tick today, on the gang's habit only");
+assert.equal((await as(A, 'select count(*)::int as n from public.ticks where user_id = $1', [B])).rows[0].n, 0, "A still can't read B's ticks directly");
+await as(B, "update public.habits set private = true where slug = 'run'");
+assert.deepEqual((await gangs(A)).find((r) => r.member === B).days, [], 'a private habit shows no ticks, even in a gang');
+await as(B, "update public.habits set private = false where slug = 'run'");
+
+// The owner, and only the owner, changes the gang.
+await rejects(as(B, 'select public.edit_gang($1, $2, $3)', [run, 'Hacked', await plus(60)]), /only the owner/, "B can't rename A's gang");
+await rejects(as(B, 'select public.remove_member($1, $2)', [run, A]), /only the owner/, "B can't remove the owner");
+await as(A, 'select public.edit_gang($1, $2, $3)', [run, 'Run club 2', await plus(10)]);
+g = await gangs(B);
+assert.equal(g[0].name, 'Run club 2', 'the owner renames it');
+assert.equal(String(g[0].ends instanceof Date ? g[0].ends.toISOString().slice(0, 10) : g[0].ends), await plus(29), 'but its end never moves earlier');
+await rejects(as(A, 'select public.edit_gang($1, $2, $3)', [run, '', await plus(30)]), /violates/, 'refused: an empty name');
+
+// Leaving: the owner role passes to whoever has been in longest.
+await as(A, 'select public.create_invite($1, $2)', [h(42), run]);
+assert.equal(await accept(C, 42), 'ok', 'C joins too');
+await habitIn(C, 'run', run);
+await as(A, 'select public.leave_gang($1)', [run]);
+assert.equal(await linkOf(A, 'run'), null, "leaving unlinks A's habit, which stays A's");
+assert.equal((await as(A, "select count(*)::int as n from public.habits where slug = 'run'")).rows[0].n, 1, 'the habit itself stays');
+assert.deepEqual(await gangs(A), [], 'A sees the gang no more');
+g = await gangs(B);
+assert.deepEqual(g.map((r) => [r.tag_name, r.owner]), [['Ravi', true], ['मीरा', false]], 'B, in longest, owns it now');
+await rejects(as(C, 'select public.remove_member($1, $2)', [run, B]), /only the owner/, 'C still can\'t remove anyone');
+await as(C, 'select public.create_invite($1, $2)', [h(44), run]);
+await as(C, 'select public.create_invite($1, $2)', [h(45), run]);
+await db.query('delete from public.invites where token_hash = $1', [hashed(45)]);
+await db.query("insert into public.invites (token_hash, user_id, expires_at, challenge_id) values ($1, $2, now() + interval '1 day', $3)", [hashed(45), C, run]);
+await as(B, 'select public.remove_member($1, $2)', [run, C]);
+assert.equal(await linkOf(C, 'run'), null, "removing C unlinks C's habit");
+assert.equal((await db.query('select count(*)::int as n from public.invites where user_id = $1 and challenge_id = $2', [C, run])).rows[0].n, 0, "and takes back C's cards for the gang");
+await db.query("insert into public.invites (token_hash, user_id, expires_at, challenge_id) values ($1, $2, now() + interval '1 day', $3)", [hashed(45), C, run]);
+assert.equal((await peek(A, 45)).state, 'gone', 'a card from someone no longer in the gang is gone');
+assert.equal(await accept(A, 45), 'gone', 'and lets nobody in (review of 12 Nov)');
+assert.deepEqual(await gangs(C), [], 'and C sees nothing');
+await rejects(as(B, 'select public.remove_member($1, $2)', [run, B]), /leave_gang/, 'owners leave, not remove themselves');
+
+// Ended and full gangs take no one new.
+await as(B, 'select public.create_invite($1, $2)', [h(43), run]);
+await db.query("update public.challenges set starts = current_date - 40, ends = current_date - 1 where id = $1", [run]);
+assert.equal((await peek(C, 43)).state, 'ended', 'an ended gang says so');
+assert.equal(await accept(C, 43), 'ended', 'and takes nobody');
+await db.query("update public.challenges set starts = current_date, ends = current_date + 29 where id = $1", [run]);
+const others = [];
+for (let n = 0; n < 9; n++) {
+  const id = `00000000-0000-4000-8000-0000000001${String(n).padStart(2, '0')}`;
+  await addUser(id);
+  await as(id, 'select public.set_my_tag($1, $2)', [`member${n}`, `M${n}0`]);
+  others.push(id);
+}
+for (const [n, id] of others.entries()) {
+  await as(B, 'select public.create_invite($1, $2)', [h(50 + n), run]);
+  const r = await accept(id, 50 + n);
+  assert.equal(r, n < 9 ? 'ok' : 'full', `member ${n + 2} of 10`);
+}
+assert.equal((await peek(C, 43)).state, 'full', 'ten is the most');
+assert.equal(await accept(C, 43), 'full', 'and the eleventh is turned away');
+// Account deletion leaves the gang to the others.
+await as(B, 'select public.delete_my_account()');
+assert.equal((await gangs(others[0]))[0].owner, true, 'when the owner deletes their account, the next in line owns the gang');
+assert.equal((await gangs(others[0])).length, 9, 'and the deleted account is gone from it');
+for (const id of others) await as(id, 'select public.leave_gang($1)', [run]);
+assert.equal((await db.query('select count(*)::int as n from public.challenges')).rows[0].n, 0, 'and when everyone leaves, the gang is gone');
+
 // Removing a habit from a month removes its ticks; deleting the account removes everything.
 await as(A, `delete from public.habit_months where slug = 'dsa' and month = '2026-10-01'`);
 assert.equal((await as(A, `select count(*)::int as n from public.ticks where slug = 'dsa'`)).rows[0].n, 0, 'ticks go with their habit month');
@@ -315,7 +454,7 @@ assert.equal((await db.query(`select count(*)::int as n from auth.users where id
 assert.ok((await db.query(`select count(*)::int as n from public.ticks where user_id = '${A}'`)).rows[0].n > 0, "A's ticks are untouched");
 await as(A, 'select public.delete_my_account()');
 assert.equal((await db.query(`select count(*)::int as n from public.profiles where id = '${A}'`)).rows[0].n, 0, 'account deletion clears the profile');
-for (const t of ['years', 'habits', 'months', 'habit_months', 'ticks', 'push_settings', 'push_subscriptions', 'push_log', 'push_actions', 'invites', 'buddies', 'buddy_figures']) {
+for (const t of ['years', 'habits', 'months', 'habit_months', 'ticks', 'push_settings', 'push_subscriptions', 'push_log', 'push_actions', 'invites', 'buddies', 'buddy_figures', 'challenge_members']) {
   assert.equal((await db.query(`select count(*)::int as n from public.${t} where user_id = '${A}'`)).rows[0].n, 0, `account deletion clears ${t}`);
 }
 await rejects(as(A, `insert into public.years (user_id, year) values ($1, 2027)`, [A]), /foreign key/, "a deleted account can't write again with its old token");

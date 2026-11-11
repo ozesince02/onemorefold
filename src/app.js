@@ -192,7 +192,7 @@ function todayPanel(key, s, color) {
     return `<li><button class="tag${h === next ? ' is-next on-paper' : ''}" type="button" aria-pressed="${h.cells[d - 1]}" data-toggle="${h.id}:${d}" data-focus="tag:${h.id}" style="--c:${color(h.id)}">
       <span class="tag-box" aria-hidden="true"></span>
       <span class="tag-time">${esc(h.time) || '—'}</span>
-      <span class="tag-name">${esc(h.name)}</span>
+      <span class="tag-name">${esc(h.name)}${store.challengeOf(h.id) ? ' <span class="gang-mark">gang</span>' : ''}</span>
       <span class="tag-streak">${right}</span>
     </button></li>`;
   };
@@ -364,7 +364,7 @@ function gridPanel(key, s, color) {
     const runCell = run === null ? '<td class="sum muted">—</td>'
       : `<td class="sum" title="${runWords(run)}">${run.n}${run.unit === 'day' || !run.n ? '' : `<small>${run.unit === 'week' ? 'wk' : 'mo'}</small>`}</td>`;
     return `<tr style="--c:${color(h.id)}">
-      <th class="h-name" scope="row"><div class="h-name-inner"><i></i><b title="${esc(h.name)}">${esc(h.name)}</b><small>${h.time ? `${esc(h.time)} · ` : ''}${sched}goal ${h.goal}</small></div></th>
+      <th class="h-name" scope="row"><div class="h-name-inner"><i></i><b title="${esc(h.name)}">${esc(h.name)}</b><small>${store.challengeOf(h.id) ? '<span class="gang-mark">gang</span> ' : ''}${h.time ? `${esc(h.time)} · ` : ''}${sched}goal ${h.goal}</small></div></th>
       ${cells}${cols.map(([, , cell]) => cell(h)).join('')}
       ${runCell}<td class="sum">${h.longest}</td></tr>`;
   }).join('');
@@ -596,7 +596,10 @@ function habitsView(key) {
         <button class="icon-btn danger" type="button" data-remove="${h.id}">Remove</button>
       </div>
       ${scheduleEditor(h)}
-      ${ui.account.status === 'signed-in' ? `<label class="private-toggle"><input type="checkbox" data-private="${h.id}" data-focus="private-${h.id}" ${store.isPrivate(h.id) ? 'checked' : ''}><span><b>Private.</b> Never shown to any buddy, whatever they're allowed to see.</span></label>` : ''}
+      ${ui.account.status !== 'signed-in' ? '' : store.challengeOf(h.id)
+    ? `<p class="private-toggle gang-note"><b>Part of a gang.</b> Your gang sees your ticks on this habit. <a class="seg-link" href="#/flock">See the gang</a></p>`
+    : `<label class="private-toggle"><input type="checkbox" data-private="${h.id}" data-focus="private-${h.id}" ${store.isPrivate(h.id) ? 'checked' : ''}><span><b>Private.</b> Never shown to any buddy, whatever they're allowed to see.</span></label>
+      ${store.isPrivate(h.id) ? '' : `<p class="private-toggle gang-note"><a class="seg-link" href="#/flock/start/${h.id}">Fold it with friends</a> Start a gang for this habit.</p>`}`}
       ${ui.swatchFor === h.id ? `<div class="swatches" role="group" aria-label="Paper colours">${PAPERS.map((p) => `<button type="button" style="--c:${p}" data-color="${h.id}:${p}" aria-pressed="${p.toLowerCase() === c.toLowerCase()}" aria-label="${p}"></button>`).join('')}</div>` : ''}
     </div>`;
   }).join('');
@@ -672,6 +675,7 @@ const menu = createAccountMenu($('[data-account]'), { page: 'app', onChoose: cho
 // Flock (D-044): buddies, as name cards. A card handed over by link is picked up before anything draws.
 captureCard();
 const flock = createFlock({ view, store, getClient, toast, rerender: scheduleRender, openAccount: () => menu.open(), today });
+flock.captureStart();
 wireCraneNotes(view);
 
 // First sign-in on a browser that already has folds, when the account has some too.
@@ -1170,6 +1174,7 @@ function scrollToAnchor() {
 }
 window.addEventListener('hashchange', () => {
   captureCard();
+  flock.captureStart();
   ui.swatchFor = null;
   if (route().name === 'flock') flock.refresh();
   render();

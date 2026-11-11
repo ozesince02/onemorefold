@@ -122,6 +122,12 @@ Shadows are allowed **only** on paper lying on paper. Buttons and controls are f
 - **Name card** (`.meishi`): a buddy, as a card on the Flock board with a paper band along the
   top (sora, sakura, matcha, yamabuki, kraft in turn). It shows only figures, each saying what it
   counts, never a day grid. `.meishi--new` is the dashed "Hand over your card" slot.
+- **Gang** (`.gang`): a gang's sheet in Flock. It holds today's crane (`.gang-crane`, filled from
+  the bottom as members fold, the dashed paper showing what's left) and a nobori banner (ガンバレ,
+  on ai) beside a table of hanko stamps (`.stamp--on` filled shu, `.stamp` a dashed ring,
+  `.stamp--rest` a dot). Who hasn't folded is named in words, never in red.
+- **Gang mark** (`.gang-mark`): a small sumi pill reading "gang", beside a gang habit's name in the
+  tracker.
 - **Segmented switch** (`.seg`): Days / Goal / Both. Selected is sumi on washi.
   "Make default" appears only when the view differs from the saved default.
 - **Tags** (`.tag`): today's habits. Square box, time, name, run. Ticked box takes the habit colour

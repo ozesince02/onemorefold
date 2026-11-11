@@ -98,6 +98,15 @@ export function cleanState(input) {
     for (const id of Object.keys(input.private)) if (isId(id) && input.private[id] === true) priv[id] = true;
     if (Object.keys(priv).length) out.private = priv;
   }
+  // Habits that are your part of a gang (D-046): { id: gang uuid }, one habit per gang.
+  if (isObject(input.links)) {
+    const links = {};
+    const seen = new Set();
+    for (const [id, gang] of Object.entries(input.links)) {
+      if (isId(id) && typeof gang === 'string' && /^[0-9a-f-]{36}$/.test(gang) && !seen.has(gang)) { links[id] = gang; seen.add(gang); }
+    }
+    if (Object.keys(links).length) out.links = links;
+  }
 
   if (isObject(input.prefs)) {
     out.prefs = { percentView: VIEWS.includes(input.prefs.percentView) ? input.prefs.percentView : 'days' };
