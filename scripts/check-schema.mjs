@@ -403,8 +403,16 @@ assert.deepEqual(await gangs(A), [], 'A sees the gang no more');
 g = await gangs(B);
 assert.deepEqual(g.map((r) => [r.tag_name, r.owner]), [['Ravi', true], ['मीरा', false]], 'B, in longest, owns it now');
 await rejects(as(C, 'select public.remove_member($1, $2)', [run, B]), /only the owner/, 'C still can\'t remove anyone');
+await as(C, 'select public.create_invite($1, $2)', [h(44), run]);
+await as(C, 'select public.create_invite($1, $2)', [h(45), run]);
+await db.query('delete from public.invites where token_hash = $1', [hashed(45)]);
+await db.query("insert into public.invites (token_hash, user_id, expires_at, challenge_id) values ($1, $2, now() + interval '1 day', $3)", [hashed(45), C, run]);
 await as(B, 'select public.remove_member($1, $2)', [run, C]);
 assert.equal(await linkOf(C, 'run'), null, "removing C unlinks C's habit");
+assert.equal((await db.query('select count(*)::int as n from public.invites where user_id = $1 and challenge_id = $2', [C, run])).rows[0].n, 0, "and takes back C's cards for the gang");
+await db.query("insert into public.invites (token_hash, user_id, expires_at, challenge_id) values ($1, $2, now() + interval '1 day', $3)", [hashed(45), C, run]);
+assert.equal((await peek(A, 45)).state, 'gone', 'a card from someone no longer in the gang is gone');
+assert.equal(await accept(A, 45), 'gone', 'and lets nobody in (review of 12 Nov)');
 assert.deepEqual(await gangs(C), [], 'and C sees nothing');
 await rejects(as(B, 'select public.remove_member($1, $2)', [run, B]), /leave_gang/, 'owners leave, not remove themselves');
 

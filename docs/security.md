@@ -338,6 +338,10 @@ person's rows directly:
 - **Tests:** `check-schema.mjs` covers strangers, links to other gangs, private habits, owner-only
   actions, handover, ended and full gangs, the limits and account deletion. `check-gangs.mjs`
   covers the maths and the link through sync.
+- **Review (12 Nov), fixed before merging:** a member removed by the owner could have come back
+  with a second account, using gang cards they made before being removed: a card was checked
+  against its sender's membership only when it was made. Now leaving or being removed takes back
+  your cards for that gang, and a card from someone no longer in it is gone. A test covers it.
 
 ### Accepted risks (owner's decision, 24 Oct 2026, D-016)
 

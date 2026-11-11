@@ -56,14 +56,16 @@ end $$;
 create trigger check_habit_challenge before insert or update of challenge_id on public.habits
   for each row execute function private.check_habit_challenge();
 
--- Someone left (or was removed, or deleted their account): unlink their habit, pass the gang on if
--- they owned it, and remove the gang once nobody is left.
+-- Someone left (or was removed, or deleted their account): unlink their habit, take back the cards
+-- they handed out for this gang, pass the gang on if they owned it, and remove the gang once nobody
+-- is left.
 create function private.after_member_left() returns trigger
 language plpgsql security definer set search_path = '' as $$
 declare
   next_owner uuid;
 begin
   update public.habits set challenge_id = null where user_id = old.user_id and challenge_id = old.challenge_id;
+  delete from public.invites where user_id = old.user_id and challenge_id = old.challenge_id;
   if old.owner then
     select m.user_id into next_owner from public.challenge_members m
       where m.challenge_id = old.challenge_id order by m.joined_at, m.user_id limit 1;
@@ -165,6 +167,11 @@ begin
   end if;
   select * into c from public.challenges ch where ch.id = inv.challenge_id;
   select count(*) into n from public.challenge_members m where m.challenge_id = c.id;
+  -- A card from someone no longer in the gang is gone, whatever its dates (review of 12 Nov 2026).
+  if not exists (select 1 from public.challenge_members m where m.challenge_id = c.id and m.user_id = inv.user_id) then
+    return query select 'gone'::text, null::text, null::text, null::text, null::text, null::text, null::smallint[], null::smallint, null::date, null::date, null::int;
+    return;
+  end if;
   st := case when inv.user_id = me then 'self'
              when exists (select 1 from public.challenge_members m where m.challenge_id = c.id and m.user_id = me) then 'already'
              when c.ends < current_date then 'ended'
@@ -203,6 +210,7 @@ begin
   else
     select * into c from public.challenges ch where ch.id = inv.challenge_id for update;
     if c.id is null then return 'gone'; end if;
+    if not exists (select 1 from public.challenge_members where challenge_id = c.id and user_id = inv.user_id) then return 'gone'; end if;
     if exists (select 1 from public.challenge_members where challenge_id = c.id and user_id = me) then return 'already'; end if;
     if c.ends < current_date then return 'ended'; end if;
     if (select count(*) from public.challenge_members where challenge_id = c.id) >= 10 then return 'full'; end if;
