@@ -118,5 +118,34 @@ stands for, in paper art or pixel art.
 - **To decide later:** a new quote each visit, or one per day (a quote of the day); where it sits
   on the page; paper art or pixel art, or both.
 
+### Tick styles: more than boxes (11 Nov 2026, from the owner)
+A person looked at the month grid and asked "what is this, so many boxes? I want to get rid of
+them." So: a choice of how a tick looks and feels, with two or three styles besides the box, picked
+in the account chit next to Paper.
+- **Kyudo (the owner's idea):** each empty day is a small black-and-white target (a mato, from
+  Japanese archery). Over a target the pointer becomes an arrow; a click looses it, the arrow flies
+  in and lands, and the target fills with the habit's colour.
+- **Hanko:** an empty day is a faint dotted circle; a tick stamps a seal in the habit's colour,
+  tilted a little differently each time, like a real stamp. It pairs with the hanko of Flock (D-044).
+- **Daruma:** each empty day is a daruma's blank eye; a tick paints it in. The daruma is the doll of
+  "fall seven times, rise eight", so this one carries the whole idea of One More Fold.
+- **Fold:** a flat square of washi; a tick folds its corner over (or into a tiny crane), the most
+  literal "every tick is a fold".
+
+The complaint is partly about how many there are, not only their shape, so pair the styles with a
+**quiet grid** option: days to come drawn as faint dots rather than boxes, or hidden; rest days
+blank; only the days so far fully drawn. That halves what's on screen early in a month, whatever
+the style.
+
+To keep in mind when building:
+- the box stays the default, and the style is per device, like Paper;
+- every style works with a keyboard and a screen reader exactly as the box does (a button with
+  aria-pressed); the arrow cursor is decoration, and on touch, where there's no pointer, the arrow
+  flies in from the edge;
+- with reduced motion, nothing flies: the target, seal or eye simply fills;
+- empty states still need 3:1 contrast in Light, Warm and Dark;
+- animate only the tapped cell, so a month of 30 habits stays smooth;
+- a custom cursor as an SVG data URI is allowed by the current CSP (`img-src data:`).
+
 ### Habit templates
 Start a new month or a new person from a template: "morning routine", "DSA prep", "language".
