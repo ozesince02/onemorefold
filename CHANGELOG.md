@@ -3,7 +3,7 @@
 What changed, for people using the app. Why it changed lives in [docs/decisions.md](docs/decisions.md).
 Dates are when the work landed.
 
-## Unreleased
+## 0.17.0 — 12 November 2026
 
 ### Added
 - **Gangs** in Flock (D-046): a habit two to ten people take on together, each ticking their own.
