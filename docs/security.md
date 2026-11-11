@@ -319,6 +319,30 @@ returns only what that buddy's level allows. It never returns a private habit.
   habits, visitors, one-time cards, expiry, the limits and account deletion. `check-buddies.mjs`
   covers tags, the figures and private habits through sync.
 
+### 12 November 2026 — gangs (branch `feature/flock-gangs`)
+
+Gang members see each other's ticks on one habit (D-046). As with buddies, nobody reads another
+person's rows directly:
+- **Reading:** `my_gangs()` returns only gangs the caller is in, and only ticks from each member's
+  linked, non-private habit between the gang's dates.
+- **Tables:** `challenges` and `challenge_members` have row-level security on, with no policies and
+  no grants, so they're reached only through the functions.
+- **Owner-only actions:** renaming, extending and removing members are checked against the caller.
+- **Linking:** a habit can link only to a gang its owner is in, once. Anything else is unlinked by
+  a trigger, so a device that hasn't heard you left can still sync the rest of your tracker.
+- **Leaving:** leaving, being removed or deleting your account unlinks your habit, passes the gang
+  on and removes an empty gang.
+- **Cards:** the database now hashes the card secret itself, so the stored hash is no longer usable
+  in place of the secret (from the 11 Nov review).
+- **Shown in the page:** gang names and tags go through `esc()`.
+- **Tests:** `check-schema.mjs` covers strangers, links to other gangs, private habits, owner-only
+  actions, handover, ended and full gangs, the limits and account deletion. `check-gangs.mjs`
+  covers the maths and the link through sync.
+- **Review (12 Nov), fixed before merging:** a member removed by the owner could have come back
+  with a second account, using gang cards they made before being removed: a card was checked
+  against its sender's membership only when it was made. Now leaving or being removed takes back
+  your cards for that gang, and a card from someone no longer in it is gone. A test covers it.
+
 ### Accepted risks (owner's decision, 24 Oct 2026, D-016)
 
 - The repository is public and holds the owner's January–October 2026 habit log (names, times,

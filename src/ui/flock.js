@@ -12,6 +12,9 @@ import {
   loadBuddies, saveSharing, removeBuddy, publishFigures,
 } from '../lib/buddies-api.js';
 import { noteTrigger } from './note-trigger.js';
+import { createGangs } from './flock-gangs.js';
+import { describe } from '../lib/schedule.js';
+import { parseDay } from '../lib/gangs.js';
 
 // A card someone handed you waits here (this tab only) while you sign in or pick a tag.
 const CARD_KEY = `${STORE_KEY}:card`;
@@ -52,6 +55,7 @@ export function createFlock({ view, store, getClient, toast, rerender, openAccou
 
   const sb = () => getClient();
   const signedIn = () => account.status === 'signed-in' && account.id;
+  const gangs = createGangs({ store, sb, toast, rerender, today });
 
   async function load() {
     if (!signedIn()) return;
@@ -59,7 +63,7 @@ export function createFlock({ view, store, getClient, toast, rerender, openAccou
     loading ||= (async () => {
       try {
         const client = await sb();
-        [me, buddies, cards] = await Promise.all([loadMyTag(client, uid), loadBuddies(client), openCards(client)]);
+        [me, buddies, cards] = await Promise.all([loadMyTag(client, uid), loadBuddies(client), openCards(client), gangs.load()]);
         if (account.id !== uid) return;
         loaded = true; failed = '';
         if (!me) draft.name ||= '';
@@ -102,6 +106,7 @@ export function createFlock({ view, store, getClient, toast, rerender, openAccou
     account = next;
     if (!changed) return;
     loaded = false; me = null; buddies = []; cards = []; fresh = null; published = ''; removing = '';
+    gangs.reset();
     card.peek = null; card.asked = false;
     if (signedIn()) load();
   }
@@ -139,6 +144,7 @@ export function createFlock({ view, store, getClient, toast, rerender, openAccou
     return `${head(`You're <strong>${esc(tagText(me.name, me.code))}</strong>. Nobody can search for you: buddies join with your card.`)}
       ${card.token ? cardSlip() : ''}
       <div class="board">
+        ${gangs.render()}
         <section class="panel span-8 flock-buddies" aria-labelledby="buddies-h">
           <div class="panel-head"><h2 id="buddies-h">Buddies</h2><p>${buddies.length ? `${plural(buddies.length, 'buddy', 'buddies')} · their last 7 days` : 'Nobody yet'}</p></div>
           <div class="meishi-grid">${buddies.map(buddyCard).join('')}${handOver()}</div>
@@ -246,8 +252,16 @@ export function createFlock({ view, store, getClient, toast, rerender, openAccou
     const p = card.peek;
     const away = '<button class="seg-link" type="button" data-card-away>Put it away</button>';
     let inner;
+    const short = (key) => { const { m, d } = parseDay(key); return `${d} ${monthName(m)}`; };
     if (!p) inner = '<p class="note">Opening the card…</p>';
-    else if (p.state === 'ok') {
+    else if (p.kind === 'gang' && p.state === 'ok') {
+      const g = p.gang;
+      const what = describe(g);
+      inner = `<div class="card-from">${hanko(p.code)}<div><p class="note">A card from ${esc(tagText(p.name, p.code))}, to join the gang</p><h2>${esc(g.name)}</h2>
+          <p>${what[0].toUpperCase()}${what.slice(1)}, ${short(g.starts)} to ${short(g.ends)}. ${g.members} ${g.members === 1 ? 'member' : 'members'} so far.</p></div></div>
+        <p class="note">Joining adds ${esc(g.name)} to your habits. Everyone in the gang sees your ticks on it, and who hasn't folded yet each day, but nothing else from your tracker.</p>
+        <div class="backup-actions"><button class="btn" type="button" data-card-accept ${card.busy ? 'disabled' : ''}>Join the gang</button><button class="seg-link" type="button" data-card-decline>Not now</button></div>`;
+    } else if (p.state === 'ok') {
       inner = `<div class="card-from">${hanko(p.code)}<div><p class="note">A card from</p><h2>${esc(tagText(p.name, p.code))}</h2><p>wants to be folding buddies.</p></div></div>
         <fieldset class="choice"><legend class="note">What ${esc(p.name)} sees from you (you can change it later)</legend>
           ${LEVELS.map((l) => `<label><input type="radio" name="card-level" value="${l}" data-card-level data-focus="card-level-${l}" ${l === card.level ? 'checked' : ''}><i></i><span><b>${LEVEL_LABELS[l]}</b> ${LEVEL_HINTS[l]}</span></label>`).join('')}
@@ -257,7 +271,9 @@ export function createFlock({ view, store, getClient, toast, rerender, openAccou
       inner = `<p>${{
         gone: "This card can't be opened any more. It was used, taken back, or it's more than 7 days old. Ask for a new one.",
         self: 'This is your own card. Send it to a friend instead.',
-        already: `You and ${esc(p.name)} are already buddies.`,
+        already: p.kind === 'gang' ? `You're already in ${esc(p.gang?.name || 'that gang')}.` : `You and ${esc(p.name)} are already buddies.`,
+        full: 'That gang already has ten people, the most there can be.',
+        ended: 'That gang has finished, so it takes nobody new.',
         error: esc(p.message || "Couldn't open the card."),
       }[p.state]}</p>${away}`;
     }
@@ -295,10 +311,12 @@ export function createFlock({ view, store, getClient, toast, rerender, openAccou
   // <details> forget being open when redrawn; remember it here. 'toggle' doesn't bubble.
   view.addEventListener('toggle', (e) => {
     const d = e.target;
+    gangs.onToggle(d);
     if (d.matches?.('[data-share-open]')) { if (d.open) openShares.add(d.dataset.shareOpen); else openShares.delete(d.dataset.shareOpen); }
     if (d.matches?.('[data-change-open]')) changeOpen = d.open;
   }, true);
   view.addEventListener('submit', (e) => {
+    if (gangs.onSubmit(e)) return;
     const form = e.target.closest('[data-tag-form]');
     if (!form) return;
     e.preventDefault();
@@ -310,6 +328,7 @@ export function createFlock({ view, store, getClient, toast, rerender, openAccou
   });
   view.addEventListener('change', (e) => {
     const t = e.target;
+    if (gangs.onChange(t)) return;
     if (t.matches('[data-card-level]')) { card.level = LEVELS.includes(t.value) ? t.value : 'doing'; return; }
     if (t.matches('[data-share-level]')) {
       const b = buddies.find((x) => x.id === t.dataset.shareLevel);
@@ -327,6 +346,7 @@ export function createFlock({ view, store, getClient, toast, rerender, openAccou
   });
   view.addEventListener('click', (e) => {
     const t = e.target;
+    if (gangs.onClick(t)) return;
     if (t.closest('[data-flock-signin]')) return openAccount();
     if (t.closest('[data-flock-retry]')) { failed = ''; rerender(); return load(); }
     if (t.closest('[data-tag-new]')) { draft.code = suggestCode(); draft.error = ''; return rerender(); }
@@ -346,6 +366,15 @@ export function createFlock({ view, store, getClient, toast, rerender, openAccou
     if (t.closest('[data-card-accept]')) {
       card.busy = true; rerender();
       return act(async (c) => {
+        if (card.peek?.kind === 'gang') {
+          const r = await acceptCard(c, card.token);
+          if (r !== 'ok') { card.peek = { ...card.peek, state: r }; card.busy = false; return; }
+          const name = card.peek.gang.name;
+          clearCard();
+          await gangs.joined();
+          toast(`You're in ${name}. It's in your habits now.`);
+          return;
+        }
         const r = await acceptCard(c, card.token, card.level);
         if (r === 'ok') {
           toast(`You and ${tagText(card.peek.name, card.peek.code)} are buddies now.`);
@@ -375,11 +404,20 @@ export function createFlock({ view, store, getClient, toast, rerender, openAccou
     }
   });
 
-  // Coming back to Flock, or to the tab: fresh figures from buddies.
+  // Coming back to Flock, or to the tab: fresh figures from buddies and gangs.
   async function refresh() {
     if (!signedIn() || !loaded || !me) return;
-    try { buddies = await loadBuddies(await sb()); rerender(); } catch { /* keep what's shown */ }
+    try { const c = await sb(); [buddies] = await Promise.all([loadBuddies(c), gangs.load()]); rerender(); } catch { /* keep what's shown */ }
   }
 
-  return { render, onAccount, refresh, onStore: () => publish(5000), hasCard: () => Boolean(card.token || readCard()) };
+  // "#/flock/start/<habit>": the Habits page's "Fold it with friends".
+  function captureStart() {
+    const m = location.hash.match(/^#\/flock\/start\/([a-z0-9][a-z0-9-]{0,63})$/);
+    if (!m) return false;
+    gangs.startFrom(m[1]);
+    history.replaceState(null, '', `${location.pathname}#/flock`);
+    return true;
+  }
+
+  return { render, onAccount, refresh, captureStart, onStore: () => publish(5000), hasCard: () => Boolean(card.token || readCard()) };
 }

@@ -13,6 +13,14 @@ export const NOTES = {
       "If you see a friend's folds slowing down, don't nudge them here: call them.",
     ],
   },
+  gangs: {
+    title: 'Why gangs?',
+    body: [
+      'Some habits are easier with company. Five friends in five cities can still run together if they all fold the same habit.',
+      "A gang keeps everyone's own progress and puts it side by side. Not to rank anyone: the crane only finishes when everyone has folded, so nobody runs alone.",
+      "And yes, it says who hasn't folded yet today. Not to shame anyone: so the rest of you know who could use a message.",
+    ],
+  },
   'patch-notes': {
     title: 'Why patch notes?',
     body: [

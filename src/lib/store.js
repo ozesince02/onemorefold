@@ -171,6 +171,20 @@ export const store = {
     save();
   },
 
+  // A habit that is your part of a gang (D-046): { habitId: gangId }. The database keeps the link
+  // only while you're in that gang.
+  challengeOf: (id) => state.links?.[id] || null,
+  linkChallenge(id, gang) {
+    if (!isId(id) || (gang && !/^[0-9a-f-]{36}$/.test(gang))) return;
+    state.links ||= {};
+    if (gang) {
+      for (const [other, g] of Object.entries(state.links)) if (g === gang && other !== id) delete state.links[other];
+      state.links[id] = gang;
+    } else delete state.links[id];
+    if (!Object.keys(state.links).length) delete state.links;
+    save();
+  },
+
   // A private habit is never shown to any buddy (D-029), whatever level they're at.
   isPrivate: (id) => state.private?.[id] === true,
   setPrivate(id, on) {

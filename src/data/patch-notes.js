@@ -7,6 +7,18 @@
 
 export const PATCHES = [
   {
+    version: '0.17',
+    date: '2026-11-12',
+    title: 'Get the gang together',
+    sticker: 'ガンバレ',
+    notes: [
+      ['Gangs.', "Pick a habit, pick your people (up to ten), pick how long. Everyone ticks their own, and you see each other's folds on that one habit. Your other habits stay yours."],
+      ['One crane, folded together.', "Each member's tick is one fold. The crane only finishes when everyone has folded, and yes, it says who hasn't yet. Not to shame anyone: so the rest of you know who could use a text."],
+      ['A banner of stamps.', 'Every day leaves a little red hanko for each of you. A week of them looks rather heroic.'],
+      ['Fold it with friends.', 'Any habit on the Habits page can become a gang in two taps. Your old ticks stay right where they are.'],
+    ],
+  },
+  {
     version: '0.16',
     date: '2026-11-11',
     title: 'Bring your people',
