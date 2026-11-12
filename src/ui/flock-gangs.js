@@ -9,6 +9,7 @@ import { gangStatus, stampRows, namesText, endFor, parseDay, dayKey, gangCranes,
 import { loadGangs, createGang, editGang, leaveGang, removeMember, createCard, loadKeepsakes, saveKeepsake } from '../lib/buddies-api.js';
 import { APP_PATH } from '../config.js';
 import { noteTrigger } from './note-trigger.js';
+import { shelvesHTML } from './shelf.js';
 import { craneMark } from './paper.js';
 
 const NARROW = new Intl.DateTimeFormat('en-GB', { weekday: 'narrow' });
@@ -33,7 +34,9 @@ const seal = (code, extra = '') => `<span class="hanko${extra}" data-len="${Stri
 const lengthOf = (a, b) => Math.round((Date.UTC(...ymd(b)) - Date.UTC(...ymd(a))) / 86400000) + 1;
 const ymd = (k) => { const { y, m, d } = parseDay(k); return [y, m - 1, d]; };
 
-export function createGangs({ store, sb, toast, rerender, today, userId }) {
+const GANG_PAPERS = ['ai', 'matcha', 'yamabuki', 'sakura', 'sora', 'kraft'];
+
+export function createGangs({ store, sb, toast, rerender, today, userId, setOpen }) {
   let gangs = [];
   let keepsakes = [];
   let starting = false;
@@ -82,20 +85,41 @@ export function createGangs({ store, sb, toast, rerender, today, userId }) {
   }
 
   // ---------- Views ----------
-  function render() {
+  // What a gang's roll says at its foot: how today stands, in a few characters.
+  function sealOf(g) {
+    const s = gangStatus(g, today());
+    if (s.phase === 'soon') return 'soon';
+    if (s.phase === 'over') return 'done';
+    if (!s.due) return 'rest';
+    return `${s.folded.length}/${s.folded.length + s.waiting.length}`;
+  }
+
+  // The scrolls on the Gangs shelf (D-048): one per gang, then a blank one that unrolls into the
+  // start form.
+  function items() {
     const habits = store.view(monthKey(today().y, today().m)).habits;
     const full = gangs.length >= GANG_LIMIT;
-    // Like Buddies: the cards, then a dashed tile to start another, which opens into the form.
-    const tile = full
-      ? `<div class="gang gang--new"><p class="note">You're in ${GANG_LIMIT} gangs, the most there can be.</p></div>`
-      : starting
-        ? `<div class="gang gang--new gang--starting"><h3>Start a gang</h3>${startForm(habits)}</div>`
-        : `<div class="gang gang--new"><h3>Start a gang</h3>
-          <p class="note">${gangs.length ? 'Another habit, another gang.' : "Some habits are easier with company. Start a gang for one, then hand its card to up to nine friends. Each of you ticks your own; you see each other's ticks on that habit, and nothing else."}</p>
-          <button class="btn" type="button" data-gang-start>Start a gang</button></div>`;
+    if (starting && !draft) draft = blankDraft();
+    const list = gangs.map((g, i) => ({
+      key: `gang:${g.id}`, name: g.name, seal: sealOf(g), paper: GANG_PAPERS[i % GANG_PAPERS.length],
+      width: gangStatus(g, today()).phase === 'over' ? 470 : 660, sheet: gangCard(g, i),
+    }));
+    list.push({
+      key: 'new:gang', name: 'New gang', seal: '+', paper: 'kraft', ghost: true, width: full ? 300 : 560,
+      sheet: full ? `<p class="note">You're in ${GANG_LIMIT} gangs, the most there can be.</p>`
+        : `<h3 class="scroll-title">Start a gang</h3>
+          <p class="note">${gangs.length ? 'Another habit, another gang.' : "Some habits are easier with company. Each of you ticks your own; you see each other's ticks on that habit, and nothing else."}</p>
+          ${starting ? startForm(habits) : ''}`,
+    });
+    return list;
+  }
+
+  function render({ openKey = null, width = 800 } = {}) {
+    starting = openKey === 'new:gang';
+    if (!starting) { draft = null; error = ''; }
     return `<section class="panel span-12 flock-gangs" aria-labelledby="gangs-h">
       <div class="panel-head"><h2 id="gangs-h">Gangs</h2><div class="flock-head-side"><p>${gangs.length ? plural(gangs.length, 'gang') : 'None yet'}</p>${noteTrigger('gangs', 'Why gangs?')}</div></div>
-      <div class="gang-list">${gangs.map(gangCard).join('')}${tile}</div>
+      ${shelvesHTML(items(), { open: openKey, width, label: 'Your gangs' })}
     </section>`;
   }
 
@@ -237,6 +261,7 @@ export function createGangs({ store, sb, toast, rerender, today, userId }) {
       await reload(c);
       starting = false; draft = null; error = '';
       open.add(g.id);
+      setOpen(`gang:${g.id}`);
     }, () => toast(`${g.name} has started. Make a card to invite your gang.`));
   }
 
@@ -268,7 +293,8 @@ export function createGangs({ store, sb, toast, rerender, today, userId }) {
     },
     reset() { keepsakes = []; gangs = []; starting = false; draft = null; error = ''; confirm = ''; open.clear(); for (const k of Object.keys(fresh)) delete fresh[k]; },
     // "Fold it with friends" from the Habits page: the start form, filled in from that habit.
-    startFrom(habitId) { starting = true; draft = blankDraft(habitId); error = ''; },
+    items,
+    startFrom(habitId) { starting = true; draft = blankDraft(habitId); error = ''; setOpen('new:gang'); },
     onToggle(d) {
       if (d.matches?.('[data-gang-open]')) { if (d.open) open.add(d.dataset.gangOpen); else open.delete(d.dataset.gangOpen); }
     },
@@ -321,12 +347,12 @@ export function createGangs({ store, sb, toast, rerender, today, userId }) {
           if (again) {
             starting = true;
             draft = { ...blankDraft(habit), name: g.name.slice(0, GANG_NAME_MAX), cadence: g.cadence, weekdays: g.weekdays || [1, 2, 3, 4, 5], timesPerWeek: g.timesPerWeek || 3 };
-          }
+            setOpen('new:gang');
+          } else setOpen(null);
         }, () => toast(again ? `${g.name} is in your stamp book. Here it is again: pick the dates, then hand out new cards.` : `${g.name} is in your stamp book, on the Year.`));
         return true;
       }
-      if (t.closest('[data-gang-start]')) { starting = true; draft = blankDraft(); error = ''; rerender(); return true; }
-      if (t.closest('[data-gang-cancel]')) { starting = false; draft = null; error = ''; rerender(); return true; }
+      if (t.closest('[data-gang-cancel]')) { setOpen(null); return true; }
       const add = t.closest('[data-gang-add]');
       if (add) {
         const g = gangs.find((x) => x.id === add.dataset.gangAdd);

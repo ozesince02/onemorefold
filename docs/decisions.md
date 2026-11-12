@@ -966,3 +966,34 @@ Accepted · 13 Nov 2026 · builds on D-046
   question (should a summary name who hasn't folded?) still stands.
 - **Release order:** run `20261113120000_gang_keepsakes.sql` before the site that uses it ships.
 
+
+## D-048 Flock as shelves of upright scrolls
+Accepted · 13 Nov 2026 · changes how D-044 lays out Flock
+
+- **Context:** the owner wanted Flock to feel like a place rather than a page of cards: gangs and
+  buddies as big rolled scrolls standing upright on wooden shelves, like the big scrolls carried in
+  Naruto. A first mockup drew flat hanging scrolls by mistake; the second, upright rolls, was the
+  one.
+- **Decision:**
+  - **A shelf per panel** (Gangs, Buddies). Each gang and each buddy is a roll standing on its end
+    at a slight, steady tilt (worked out from its id, so it doesn't jiggle on every redraw).
+    - **On the roll:** a name label down the front (cut short when long); a cord in its paper
+      colour; a seal at the foot (a buddy's code, or a gang's day: "2/3" folded, "rest", "soon",
+      "done").
+    - **At the end of each shelf:** a blank dashed roll ("New gang", "New buddy") that unrolls into
+      the start form or the card to hand over.
+  - **Unrolling:** the roll stays standing at the left, the paper comes out to the right (a
+    transition on its width), and the rolls after it slide to the end of the shelf (GSAP Flip).
+    Closing rolls it back.
+    - **One scroll open at a time** across the page.
+    - **More than fits:** more rolls than a shelf holds go on another shelf below.
+  - **Pulled out:** when the open scroll can't fit on its shelf (most phones, a full shelf), it's
+    pulled out and unrolls on its own in a dialog over the page. Escape, a tap outside or "Roll it
+    up" puts it back.
+  - **Wood:** the shelves and knobs use new tokens (`--wood`, `--wood-top`, `--wood-under`,
+    `--wood-knob`), tuned for each paper and dimmer at night.
+- **Not changed:** what a gang or buddy shows inside its scroll, and the "Your card" panel.
+- **Accessibility:** each roll is a button (`aria-expanded`, `aria-controls`), and a rolled sheet
+  is `inert`. The pulled-out scroll is a real modal dialog, and with reduced motion nothing slides
+  or unrolls.
+
