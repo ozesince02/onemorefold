@@ -3,6 +3,13 @@
 What changed, for people using the app. Why it changed lives in [docs/decisions.md](docs/decisions.md).
 Dates are when the work landed.
 
+## Unreleased
+
+### Added
+- **Reorder habits** (D-049): a button on the Habits page switches to just the names, in order.
+  Drag them into place (by the grip on a phone), or use the arrows. "Done" goes back. The up and
+  down buttons on each habit's editor are gone.
+
 ## 0.19.1 — 13 November 2026
 
 ### Fixed

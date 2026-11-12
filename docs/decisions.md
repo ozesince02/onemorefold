@@ -997,3 +997,19 @@ Accepted · 13 Nov 2026 · changes how D-044 lays out Flock
   is `inert`. The pulled-out scroll is a real modal dialog, and with reduced motion nothing slides
   or unrolls.
 
+
+## D-049 Reordering habits: a calm list to drag
+Accepted · 13 Nov 2026
+
+- **Context:** moving a habit meant pressing up or down on its full editor row, one step at a time,
+  among names, times, goals and schedules. The owner asked for a separate, consolidated view.
+- **Decision:** "Reorder habits" above the list switches the Habits page to only the names, in
+  order, each with its colour, a grip and up and down arrows. "Done" switches back.
+  - **Dragging:** pointer events, so a mouse, a pen or a finger all work. A row is picked up, the
+    others make room, and letting go saves the new order once (`store.reorderHabits`). With a
+    mouse the whole row can be dragged; on touch only the grip, so the list still scrolls. Near the
+    window's edge the page scrolls along.
+  - **Keyboard:** the arrows move a habit one place, and focus stays on the arrow you pressed.
+  - **The editor rows** lose their up and down buttons: reordering has its own place now.
+- **Scope:** the order is per month, like everything on the Habits page.
+
