@@ -5,6 +5,10 @@ Dates are when the work landed.
 
 ## Unreleased
 
+### Changed
+- The noren on the front page now announces Flock (buddies and gangs), linking straight to it,
+  and takes turns with "free for everyone". The reminders notice has come down.
+
 ### Fixed
 - **Flock, tidied up.**
   - **The gang mark** beside a habit is a light outlined pill, centred, sitting close to the name.
