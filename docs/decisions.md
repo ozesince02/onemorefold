@@ -993,6 +993,11 @@ Accepted · 13 Nov 2026 · changes how D-044 lays out Flock
   - **Wood:** the shelves and knobs use new tokens (`--wood`, `--wood-top`, `--wood-under`,
     `--wood-knob`), tuned for each paper and dimmer at night.
 - **Not changed:** what a gang or buddy shows inside its scroll, and the "Your card" panel.
+- **One height (13 Nov, from the owner):** a shelf and every scroll keep one height, open or rolled
+  (270px). An open scroll's contents sit in sections side by side (`.sheet-cols`): a gang's today,
+  stamps and settings; a buddy's figures, shared habits and sharing. The paper is as wide as its
+  sections up to the room the shelf has, and scrolls sideways past that. A tall section, such as
+  ten members' stamps, scrolls within its own column.
 - **Accessibility:** each roll is a button (`aria-expanded`, `aria-controls`), and a rolled sheet
   is `inert`. The pulled-out scroll is a real modal dialog, and with reduced motion nothing slides
   or unrolls.

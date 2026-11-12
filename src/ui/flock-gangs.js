@@ -102,14 +102,14 @@ export function createGangs({ store, sb, toast, rerender, today, userId, setOpen
     if (starting && !draft) draft = blankDraft();
     const list = gangs.map((g, i) => ({
       key: `gang:${g.id}`, name: g.name, seal: sealOf(g), paper: GANG_PAPERS[i % GANG_PAPERS.length],
-      width: gangStatus(g, today()).phase === 'over' ? 470 : 660, sheet: gangCard(g, i),
+      sheet: gangCard(g, i),
     }));
     list.push({
-      key: 'new:gang', name: 'New gang', seal: '+', paper: 'kraft', ghost: true, width: full ? 300 : 560,
-      sheet: full ? `<p class="note">You're in ${GANG_LIMIT} gangs, the most there can be.</p>`
-        : `<h3 class="scroll-title">Start a gang</h3>
-          <p class="note">${gangs.length ? 'Another habit, another gang.' : "Some habits are easier with company. Each of you ticks your own; you see each other's ticks on that habit, and nothing else."}</p>
-          ${starting ? startForm(habits) : ''}`,
+      key: 'new:gang', name: 'New gang', seal: '+', paper: 'kraft', ghost: true,
+      sheet: full ? `<div class="sheet-cols"><div class="sheet-col"><p class="note">You're in ${GANG_LIMIT} gangs, the most there can be.</p></div></div>`
+        : `<div class="sheet-cols"><div class="sheet-col"><h3 class="scroll-title">Start a gang</h3>
+          <p class="note">${gangs.length ? 'Another habit, another gang.' : "Some habits are easier with company. Each of you ticks your own; you see each other's ticks on that habit, and nothing else."}</p></div>
+          ${starting ? startForm(habits) : ''}</div>`,
     });
     return list;
   }
@@ -131,19 +131,25 @@ export function createGangs({ store, sb, toast, rerender, today, userId, setOpen
       ? `<label>Times a week<input type="number" min="1" max="7" name="times" data-focus="gang-times" value="${d.timesPerWeek}"></label>` : '';
     const max = endFor(todayKey(), 32);
     const ends = endFor(d.starts, Number(d.length));
-    return `<form class="gang-form" data-gang-form novalidate>
-      <label class="wide">The habit, together<input name="name" maxlength="${GANG_NAME_MAX}" data-focus="gang-name" value="${esc(d.name)}" placeholder="Run 5 km" required></label>
-      <label>Repeats<select name="cadence" data-focus="gang-cadence">${CADENCES.map((c) => `<option value="${c}" ${c === d.cadence ? 'selected' : ''}>${CADENCE_LABELS[c]}</option>`).join('')}</select></label>
-      ${times}${days}
-      <label>Starts<input type="date" name="starts" data-focus="gang-starts" min="${todayKey()}" max="${max}" value="${d.starts}"></label>
-      <label>For<select name="length" data-focus="gang-length">${LENGTHS.map(([n, label]) => `<option value="${n}" ${n === d.length ? 'selected' : ''}>${label}</option>`).join('')}</select></label>
-      <label class="wide">In your tracker<select name="habit" data-focus="gang-habit">
-        <option value="">A new habit with this name</option>
-        ${habits.filter((h) => !store.challengeOf(h.id)).map((h) => `<option value="${esc(h.id)}" ${h.id === d.habit ? 'selected' : ''}>${esc(h.name)}, which I have already</option>`).join('')}
-      </select></label>
-      <p class="note wide">Until ${short(ends)}. Once it starts, the schedule stays as it is, so nobody's progress gets rewritten.</p>
-      <p class="field-error wide" role="alert">${esc(error)}</p>
-      <div class="backup-actions wide"><button class="btn" type="submit">Start the gang</button><button class="seg-link" type="button" data-gang-cancel>Not now</button></div>
+    return `<form class="gang-form sheet-cols" data-gang-form novalidate>
+      <div class="sheet-col">
+        <label>The habit, together<input name="name" maxlength="${GANG_NAME_MAX}" data-focus="gang-name" value="${esc(d.name)}" placeholder="Run 5 km" required></label>
+        <label>Repeats<select name="cadence" data-focus="gang-cadence">${CADENCES.map((c) => `<option value="${c}" ${c === d.cadence ? 'selected' : ''}>${CADENCE_LABELS[c]}</option>`).join('')}</select></label>
+        ${times}${days}
+      </div>
+      <div class="sheet-col">
+        <label>Starts<input type="date" name="starts" data-focus="gang-starts" min="${todayKey()}" max="${max}" value="${d.starts}"></label>
+        <label>For<select name="length" data-focus="gang-length">${LENGTHS.map(([n, label]) => `<option value="${n}" ${n === d.length ? 'selected' : ''}>${label}</option>`).join('')}</select></label>
+        <label>In your tracker<select name="habit" data-focus="gang-habit">
+          <option value="">A new habit with this name</option>
+          ${habits.filter((h) => !store.challengeOf(h.id)).map((h) => `<option value="${esc(h.id)}" ${h.id === d.habit ? 'selected' : ''}>${esc(h.name)}, which I have already</option>`).join('')}
+        </select></label>
+      </div>
+      <div class="sheet-col">
+        <p class="note">Until ${short(ends)}. Once it starts, the schedule stays as it is, so nobody's progress gets rewritten.</p>
+        <p class="field-error" role="alert">${esc(error)}</p>
+        <div class="backup-actions"><button class="btn" type="submit">Start the gang</button><button class="seg-link" type="button" data-gang-cancel>Not now</button></div>
+      </div>
     </form>`;
   }
 
@@ -154,14 +160,14 @@ export function createGangs({ store, sb, toast, rerender, today, userId, setOpen
     const s = gangStatus(g, parseDay(g.ends));
     const members = s.members.filter((x) => x.linked);
     return `<article class="gang gang--done" aria-labelledby="gang-h-${i}">
-      <div class="certificate">
+      <div class="certificate sheet-cols"><div class="sheet-col cert-head">
         <p class="cert-kicker" aria-hidden="true">シュウリョウ</p>
         <h3 id="gang-h-${i}">${esc(g.name)}</h3>
         <p class="note">${sched(g)} · ${short(g.starts)} to ${short(g.ends)} · ${lengthOf(g.starts, g.ends)} days</p>
-        <p class="cert-cranes"><b>${cranes}</b><span>of ${periods} ${unitText(periods, unit)} everyone folded</span></p>
-        ${members.length ? `<ul class="cert-members">${members.map((x) => `<li>${seal(x.code)}<span class="cert-name">${esc(x.name)}</span><span class="cert-figure">${x.done} of ${x.due} due</span></li>`).join('')}</ul>` : ''}
-        <p class="note">Your habit stays in your tracker. Remove it on the Habits page whenever you're done with it.</p>
-        <div class="backup-actions"><button class="btn" type="button" data-gang-keep="${g.id}">Keep it on my Year</button><button class="btn btn--quiet" type="button" data-gang-again="${g.id}">Fold it again</button></div>
+        <p class="cert-cranes"><b>${cranes}</b><span>of ${periods} ${unitText(periods, unit)} everyone folded</span></p></div>
+        ${members.length ? `<ul class="sheet-col cert-members">${members.map((x) => `<li>${seal(x.code)}<span class="cert-name">${esc(x.name)}</span><span class="cert-figure">${x.done} of ${x.due} due</span></li>`).join('')}</ul>` : ''}
+        <div class="sheet-col cert-foot"><p class="note">Your habit stays in your tracker. Remove it on the Habits page whenever you're done with it.</p>
+        <div class="backup-actions"><button class="btn" type="button" data-gang-keep="${g.id}">Keep it on my Year</button><button class="btn btn--quiet" type="button" data-gang-again="${g.id}">Fold it again</button></div></div>
       </div>
     </article>`;
   }
@@ -222,11 +228,12 @@ export function createGangs({ store, sb, toast, rerender, today, userId, setOpen
     : `<button class="seg-link gang-leave" type="button" data-gang-leave="${g.id}">Leave the gang</button>`}
     </details>`;
 
-    return `<article class="gang" aria-labelledby="gang-h-${i}">
+    return `<article class="gang sheet-cols" aria-labelledby="gang-h-${i}"><div class="sheet-col">
       <header><h3 id="gang-h-${i}">${esc(g.name)}</h3><p class="note">${sched(g)} · ${short(g.starts)} to ${short(g.ends)}${s.phase === 'on' ? ` · day ${s.day} of ${s.length}` : ''} · ${plural(g.members.length, 'member')}</p></header>
       ${me && !me.linked && !linkedHere && s.phase !== 'over' ? `<p class="gang-unlinked">${esc(g.name)} isn't in your tracker yet. <button class="btn btn--quiet" type="button" data-gang-add="${g.id}">Add it to my habits</button></p>` : ''}
-      <div class="gang-body"><div class="gang-today">${crane(frac)}<div>${todayText}</div></div>${banner}</div>
-      ${settings}
+      <div class="gang-today">${crane(frac)}<div>${todayText}</div></div></div>
+      ${banner ? `<div class="sheet-col sheet-col--fit">${banner}</div>` : ''}
+      <div class="sheet-col">${settings}</div>
     </article>`;
   }
 

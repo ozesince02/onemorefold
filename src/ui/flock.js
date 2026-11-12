@@ -208,7 +208,6 @@ export function createFlock({ view, store, getClient, toast, rerender, drawNow =
       body = `<p class="meishi-figure"><b>${f.week_done} of ${f.week_due}</b><span>due, last 7 days</span></p>
         ${trend ? `<p class="meishi-trend meishi-trend--${trend}">${{ rising: 'Rising', steady: 'Steady', quieter: 'Quieter lately' }[trend]}</p>` : ''}
         <p class="note">${f.month_done} of ${f.month_due} due, last 30 days${f.run >= 2 ? ` · longest run going: ${f.run} days` : ''}</p>
-        ${b.habits.length ? `<ul class="meishi-habits">${b.habits.map((h) => `<li><span>${esc(h.name)}</span> ${h.done} of ${h.due} due</li>`).join('')}</ul>` : ''}
         ${age ? `<p class="note">As of ${dateText(f.as_of)}${age > 2 ? `, ${age} days ago` : ''}</p>` : ''}`;
     }
     const sharing = `<details class="meishi-share" data-share-open="${b.id}" ${openShares.has(b.id) || b.id === removing ? 'open' : ''}>
@@ -223,9 +222,10 @@ export function createFlock({ view, store, getClient, toast, rerender, drawNow =
             <button class="seg-link" type="button" data-buddy-remove-no>Keep them</button></div>`
         : `<button class="seg-link meishi-remove-link" type="button" data-buddy-remove="${b.id}">Remove buddy</button>`}
     </details>`;
-    return `<article class="meishi meishi--${CARD_PAPERS[i % CARD_PAPERS.length]}" aria-label="${esc(tagText(b.name, b.code))}">
-      <header><h3>${esc(b.name)}</h3>${hanko(b.code)}</header>
-      ${body}${sharing}
+    return `<article class="meishi sheet-cols meishi--${CARD_PAPERS[i % CARD_PAPERS.length]}" aria-label="${esc(tagText(b.name, b.code))}">
+      <div class="sheet-col"><header><h3>${esc(b.name)}</h3>${hanko(b.code)}</header>${body}</div>
+      ${b.theirLevel === 'habits' && b.habits.length && b.figures?.week_due ? `<div class="sheet-col"><p class="note">Habits ${esc(b.name)} shares, this month</p><ul class="meishi-habits">${b.habits.map((h) => `<li><span>${esc(h.name)}</span> ${h.done} of ${h.due} due</li>`).join('')}</ul></div>` : ''}
+      <div class="sheet-col">${sharing}</div>
     </article>`;
   }
 
@@ -256,8 +256,8 @@ export function createFlock({ view, store, getClient, toast, rerender, drawNow =
   // The scrolls on the Buddies shelf (D-048): one per buddy, then a blank one for handing over.
   function buddyItems() {
     return [
-      ...buddies.map((b, i) => ({ key: `buddy:${b.id}`, name: b.name, seal: b.code, paper: CARD_PAPERS[i % CARD_PAPERS.length], width: 290, sheet: buddyCard(b, i) })),
-      { key: 'new:buddy', name: 'New buddy', seal: '+', paper: 'kraft', ghost: true, width: 300, sheet: handOver() },
+      ...buddies.map((b, i) => ({ key: `buddy:${b.id}`, name: b.name, seal: b.code, paper: CARD_PAPERS[i % CARD_PAPERS.length], sheet: buddyCard(b, i) })),
+      { key: 'new:buddy', name: 'New buddy', seal: '+', paper: 'kraft', ghost: true, sheet: `<div class="sheet-cols"><div class="sheet-col">${handOver()}</div></div>` },
     ];
   }
 
@@ -283,7 +283,7 @@ export function createFlock({ view, store, getClient, toast, rerender, drawNow =
       pull.dataset.key = openKey;
       pull.innerHTML = `<div class="scroll-pull-inner" role="list">${scrollHTML(item, true, { pulled: true })}</div>
         <button class="btn btn--quiet scroll-pull-close" type="button" data-scroll-close>Roll it up</button>`;
-      if (!pull.open) pull.showModal();
+      if (!pull.open) { pull.showModal(); pull.focus(); }
     } else if (pull.open) {
       pull.dataset.key = '';
       pull.close();
