@@ -14,6 +14,7 @@ assert.equal(shouldShow({ ...b, panels: [] }, { date: '2026-11-01' }), false, 'n
 const html = bulletinHTML({ ...b, panels: ['<img src=x onerror=alert(1)>', 'Fine'], link: { text: '"><script>', href: 'app' } });
 assert.doesNotMatch(html, /<img|<script/, 'panel and link text are escaped');
 assert.match(bulletinHTML(b), /href="\/app(\.html)?"/, 'a named page becomes its address');
+assert.match(bulletinHTML({ ...b, link: { text: 'Flock', href: 'flock' } }), /href="\/app(\.html)?#\/flock"/, 'and Flock is a place in the tracker');
 assert.doesNotMatch(bulletinHTML({ ...b, link: { text: 'Win', href: 'https://evil.example.com' } }), /<a /, 'an outside address is never linked');
 assert.doesNotMatch(bulletinHTML({ ...b, link: { text: 'x', href: 'javascript:alert(1)' } }), /<a /, 'nor a script');
 assert.doesNotMatch(bulletinHTML({ ...b, link: { text: 'x', href: 'constructor' } }), /<a /, 'nor a name that only exists on every object');

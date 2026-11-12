@@ -8,7 +8,7 @@ import { esc } from '../lib/sanitize.js';
 const OLD_KEY = `${STORE_KEY}:bulletin-closed`;
 const TURN_MS = 9000; // how long each notice hangs before the next takes its place
 // Links may only go to the site's own pages, named here rather than typed as addresses.
-const PAGES = { app: APP_PATH, 'patch-notes': PATCH_NOTES_PATH, privacy: PRIVACY_PATH, terms: TERMS_PATH };
+const PAGES = { app: APP_PATH, flock: `${APP_PATH}#/flock`, 'patch-notes': PATCH_NOTES_PATH, privacy: PRIVACY_PATH, terms: TERMS_PATH };
 
 const today = () => new Date().toISOString().slice(0, 10);
 
