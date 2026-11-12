@@ -122,12 +122,28 @@ Shadows are allowed **only** on paper lying on paper. Buttons and controls are f
 - **Name card** (`.meishi`): a buddy, as a card on the Flock board with a paper band along the
   top (sora, sakura, matcha, yamabuki, kraft in turn). It shows only figures, each saying what it
   counts, never a day grid. `.meishi--new` is the dashed "Hand over your card" slot.
-- **Gang** (`.gang`): a gang's sheet in Flock. It holds today's crane (`.gang-crane`, filled from
-  the bottom as members fold, the dashed paper showing what's left) and a nobori banner (ガンバレ,
-  on ai) beside a table of hanko stamps (`.stamp--on` filled shu, `.stamp` a dashed ring,
-  `.stamp--rest` a dot). Who hasn't folded is named in words, never in red.
-- **Gang mark** (`.gang-mark`): a small sumi pill reading "gang", beside a gang habit's name in the
-  tracker.
+- **Gang** (`.gang`): a gang's sheet in Flock, built like a name card: an ai band along the top,
+  a cast shadow.
+  - **Today:** our crane mark (`.gang-crane`), plain paper coloured in from the bottom as members
+    fold.
+  - **Stamps:** a nobori banner (ガンバレ, on ai) beside a table of stamps. `.stamp--on` is filled
+    shu, `.stamp` a dashed ring, `.stamp--rest` a dot. Names only; the stamps are the marks.
+  - **Layout:** today sits beside the banner when the sheet is wide (a container query), and above
+    it when it's narrow.
+  - **Who hasn't folded** is named in words, never in red.
+- **Certificate** (`.certificate`, D-047): a finished gang. A double shu frame on the sheet (no
+  band), シュウリョウ in shu above the name, the days everyone folded as one big shu number, and
+  members as seal, name and figures. The two buttons are centred.
+- **Stamp book** (`.stamp-book`, D-047): on the Year view, a goshuin-cho. Kraft covers hold sheet
+  pages (196px), one per finished gang, scrolling sideways when there are more than fit. Seals
+  alternate a slight tilt.
+- **Flock panels:** both follow the same pattern.
+  - **Head:** the heading, then the count and the crane note on the right, centred on one line.
+  - **Body:** the cards, sized to what they hold, then a dashed `--new` tile ("Hand over your
+    card", "Start a gang") that opens into its form.
+- **Gang mark** (`.gang-mark`): a light outlined pill reading "gang", in the text's own colour,
+  beside a gang habit's name. "gang" has descenders and no ascenders, so its label sits 2px higher
+  than the box would put it.
 - **Segmented switch** (`.seg`): Days / Goal / Both. Selected is sumi on washi.
   "Make default" appears only when the view differs from the saved default.
 - **Tags** (`.tag`): today's habits. Square box, time, name, run. Ticked box takes the habit colour

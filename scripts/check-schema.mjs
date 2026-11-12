@@ -443,6 +443,33 @@ assert.equal((await gangs(others[0])).length, 9, 'and the deleted account is gon
 for (const id of others) await as(id, 'select public.leave_gang($1)', [run]);
 assert.equal((await db.query('select count(*)::int as n from public.challenges')).rows[0].n, 0, 'and when everyone leaves, the gang is gone');
 
+// Keepsakes of finished gangs (D-047): your own copy, only the agreed shape.
+{
+  const K = '00000000-0000-4000-8000-0000000000dd';
+  const keep = (who, members, extra = {}) => as(who, `insert into public.gang_keepsakes (user_id, challenge_id, name, cadence, starts, ends, cranes, periods, unit, members)
+    values ($1, $2, $3, 'daily', '2026-11-01', '2026-11-30', $4, 30, 'day', $5)`, [extra.owner || who, extra.id || K, extra.name ?? 'Run club', extra.cranes ?? 11, JSON.stringify(members)]);
+  const oze = { name: 'oze', code: '1000', done: 26, due: 30 };
+  await keep(A, [oze, { name: 'Asha Rao', code: 'RUN', done: 24, due: 30 }]);
+  assert.equal((await as(A, 'select count(*)::int as n from public.gang_keepsakes')).rows[0].n, 1, 'A keeps a finished gang');
+  assert.equal((await as(C, 'select count(*)::int as n from public.gang_keepsakes')).rows[0].n, 0, "C can't see A's keepsakes");
+  await rejects(keep(C, [oze], { owner: A, id: '00000000-0000-4000-8000-0000000000de' }), /row-level security/, "C can't write one for A");
+  await rejects(as(A, "update public.gang_keepsakes set cranes = 30"), /permission denied/, 'a keepsake is kept as it was');
+  await rejects(as('anon', 'select * from public.gang_keepsakes'), /permission denied/, 'visitors see none');
+  for (const [members, extra, what] of [
+    [[{ ...oze, extra: 1 }], {}, 'no extra fields'],
+    [[{ ...oze, name: '<b>x' }], {}, 'no markup in a name'],
+    [[{ ...oze, code: 'run' }], {}, 'codes as profiles keep them'],
+    [[{ ...oze, done: 40 }], {}, 'done never above due'],
+    [[], {}, 'at least one member'],
+    [[oze], { cranes: 31 }, 'no more cranes than days'],
+    [[oze], { name: '' }, 'a name'],
+  ]) {
+    await rejects(keep(A, members, { id: '00000000-0000-4000-8000-0000000000df', ...extra }), /violates|must be/, `refused keepsake: ${what}`);
+  }
+  assert.equal((await as(A, 'delete from public.gang_keepsakes where challenge_id = $1', [K])).affectedRows, 1, 'A can put one away');
+  await keep(A, [oze]);
+}
+
 // Removing a habit from a month removes its ticks; deleting the account removes everything.
 await as(A, `delete from public.habit_months where slug = 'dsa' and month = '2026-10-01'`);
 assert.equal((await as(A, `select count(*)::int as n from public.ticks where slug = 'dsa'`)).rows[0].n, 0, 'ticks go with their habit month');
@@ -454,7 +481,7 @@ assert.equal((await db.query(`select count(*)::int as n from auth.users where id
 assert.ok((await db.query(`select count(*)::int as n from public.ticks where user_id = '${A}'`)).rows[0].n > 0, "A's ticks are untouched");
 await as(A, 'select public.delete_my_account()');
 assert.equal((await db.query(`select count(*)::int as n from public.profiles where id = '${A}'`)).rows[0].n, 0, 'account deletion clears the profile');
-for (const t of ['years', 'habits', 'months', 'habit_months', 'ticks', 'push_settings', 'push_subscriptions', 'push_log', 'push_actions', 'invites', 'buddies', 'buddy_figures', 'challenge_members']) {
+for (const t of ['years', 'habits', 'months', 'habit_months', 'ticks', 'push_settings', 'push_subscriptions', 'push_log', 'push_actions', 'invites', 'buddies', 'buddy_figures', 'challenge_members', 'gang_keepsakes']) {
   assert.equal((await db.query(`select count(*)::int as n from public.${t} where user_id = '${A}'`)).rows[0].n, 0, `account deletion clears ${t}`);
 }
 await rejects(as(A, `insert into public.years (user_id, year) values ($1, 2027)`, [A]), /foreign key/, "a deleted account can't write again with its old token");

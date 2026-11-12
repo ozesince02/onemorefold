@@ -935,3 +935,34 @@ Accepted · 12 Nov 2026 · builds on D-030 and D-044
 - **Release order:** run `20261112120000_gangs.sql` before the site that uses it ships. Sync writes
   `habits.challenge_id`, and the card functions change their arguments.
 
+
+## D-047 When a gang ends: a certificate, and a stamp book on the Year
+Accepted · 13 Nov 2026 · builds on D-046
+
+- **Context:** the gang plan (D-030) promised a closing card and the gang's banner kept as a
+  keepsake. Three directions each were mocked; the owner chose A (the certificate) and 2 (the
+  stamp book).
+- **Gang cranes:** the days everyone in the gang folded, or the weeks or months for flexible
+  schedules. Each person counts from the day they joined, and only with their habit linked. Every
+  number says what it counts: "11 of 30 days everyone folded".
+- **The certificate** (a shojo): when a gang's last day has passed, its card in Flock turns into a
+  certificate with a double red frame. It shows シュウリョウ ("completed"), the gang, the days
+  everyone folded, and each member's seal and figures, in the order they joined (never ranked).
+  - "Keep it on my Year" saves the keepsake and leaves the gang.
+  - "Fold it again" does the same, then opens the start form filled in with the same habit and
+    schedule.
+  - The habit stays in your tracker either way.
+- **The stamp book** (a goshuin-cho, the book pilgrims fill with temple seals): a panel on the Year
+  view with a page per gang that ended that year. Each page has the gang's name, its dates,
+  everyone's seals and the days everyone folded, on kraft covers.
+- **Keepsakes are your own copy** (`gang_keepsakes`). They stay after everyone has left and the
+  gang is gone. Only you read yours.
+  - **Shape:** checked by the database.
+  - **Changes:** none. A keepsake is kept as it was; you can only put one away.
+  - **Limit:** 100 a person.
+  - **Like a group photo:** a keepsake keeps the other members' tags and figures from that gang,
+    even after they leave or delete their account. The Privacy page says so (review of 13 Nov).
+- **Not built:** gangs in the daily summary, and a push when a gang's crane is done. The open
+  question (should a summary name who hasn't folded?) still stands.
+- **Release order:** run `20261113120000_gang_keepsakes.sql` before the site that uses it ships.
+

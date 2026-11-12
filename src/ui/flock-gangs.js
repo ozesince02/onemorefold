@@ -5,10 +5,11 @@
 import { esc } from '../lib/sanitize.js';
 import { monthKey, monthShort } from '../lib/dates.js';
 import { CADENCES, CADENCE_LABELS, WEEKDAY_SHORT, describe } from '../lib/schedule.js';
-import { gangStatus, stampRows, namesText, endFor, parseDay, dayKey, LENGTHS, GANG_SIZE, GANG_LIMIT, GANG_NAME_MAX } from '../lib/gangs.js';
-import { loadGangs, createGang, editGang, leaveGang, removeMember, createCard } from '../lib/buddies-api.js';
+import { gangStatus, stampRows, namesText, endFor, parseDay, dayKey, gangCranes, keepsakeOf, LENGTHS, GANG_SIZE, GANG_LIMIT, GANG_NAME_MAX } from '../lib/gangs.js';
+import { loadGangs, createGang, editGang, leaveGang, removeMember, createCard, loadKeepsakes, saveKeepsake } from '../lib/buddies-api.js';
 import { APP_PATH } from '../config.js';
 import { noteTrigger } from './note-trigger.js';
+import { craneMark } from './paper.js';
 
 const NARROW = new Intl.DateTimeFormat('en-GB', { weekday: 'narrow' });
 const short = (key) => { const { m, d } = parseDay(key); return `${d} ${monthShort(m)}`; };
@@ -17,19 +18,24 @@ const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const sched = (g) => { const t = describe({ cadence: g.cadence, weekdays: g.weekdays, timesPerWeek: g.timesPerWeek }); return t[0].toUpperCase() + t.slice(1); };
 const runText = ({ n, unit }) => (n >= 2 ? ` · ${n}-${unit} run` : '');
 const CONTROL = /[\x00-\x1f\x7f]/;
-const hanko = (code, extra = '') => `<span class="hanko hanko--small${extra}" aria-hidden="true">${esc(code)}</span>`;
 
-// The gang's crane, folded as far as the gang has folded today: frac 0 to 1.
-function crane(frac, i) {
-  const y = (1 - frac) * 44;
-  const shape = '<polygon points="32,4 44,24 32,22"/><polygon points="8,26 32,22 54,24 32,32"/><polygon points="8,26 3,10 13,24"/><polygon points="54,24 61,12 51,21"/>';
-  return `<svg class="gang-crane" viewBox="0 0 64 36" aria-hidden="true">
-    <defs><clipPath id="gang-fold-${i}"><rect x="0" y="${y.toFixed(1)}" width="64" height="44"/></clipPath></defs>
-    <g class="gang-crane-paper">${shape}</g><g class="gang-crane-folded" clip-path="url(#gang-fold-${i})">${shape}</g></svg>`;
+// The gang's crane: our own crane mark, in plain paper, coloured in from the bottom as far as the
+// gang has folded today (frac 0 to 1).
+function crane(frac) {
+  return `<span class="gang-crane" style="--fold:${Math.max(0, Math.min(1, frac)).toFixed(3)}" aria-hidden="true">
+    ${craneMark('var(--bg-3)', 'var(--bg-3)')}<span class="gang-crane-folded">${craneMark()}</span></span>`;
 }
 
-export function createGangs({ store, sb, toast, rerender, today }) {
+const UNIT_WORDS = { day: ['day', 'days'], week: ['week', 'weeks'], month: ['month', 'months'] };
+const unitText = (n, unit) => UNIT_WORDS[unit][n === 1 ? 0 : 1];
+// The seal of a tag: the code in a ring, fitted to its length (see .hanko in app.css).
+const seal = (code, extra = '') => `<span class="hanko${extra}" data-len="${String(code).length}" aria-hidden="true">${esc(code)}</span>`;
+const lengthOf = (a, b) => Math.round((Date.UTC(...ymd(b)) - Date.UTC(...ymd(a))) / 86400000) + 1;
+const ymd = (k) => { const { y, m, d } = parseDay(k); return [y, m - 1, d]; };
+
+export function createGangs({ store, sb, toast, rerender, today, userId }) {
   let gangs = [];
+  let keepsakes = [];
   let starting = false;
   let draft = null;
   let error = '';
@@ -52,7 +58,8 @@ export function createGangs({ store, sb, toast, rerender, today }) {
   };
 
   async function load() {
-    gangs = await loadGangs(await sb());
+    const c = await sb();
+    [gangs, keepsakes] = await Promise.all([loadGangs(c), loadKeepsakes(c)]);
     // A gang this device thinks a habit belongs to, but which no longer has you: unlink it here.
     const mine = new Set(gangs.map((g) => g.id));
     for (const [id, gang] of Object.entries(store.get().links || {})) if (!mine.has(gang)) store.linkChallenge(id, null);
@@ -78,12 +85,17 @@ export function createGangs({ store, sb, toast, rerender, today }) {
   function render() {
     const habits = store.view(monthKey(today().y, today().m)).habits;
     const full = gangs.length >= GANG_LIMIT;
+    // Like Buddies: the cards, then a dashed tile to start another, which opens into the form.
+    const tile = full
+      ? `<div class="gang gang--new"><p class="note">You're in ${GANG_LIMIT} gangs, the most there can be.</p></div>`
+      : starting
+        ? `<div class="gang gang--new gang--starting"><h3>Start a gang</h3>${startForm(habits)}</div>`
+        : `<div class="gang gang--new"><h3>Start a gang</h3>
+          <p class="note">${gangs.length ? 'Another habit, another gang.' : "Some habits are easier with company. Start a gang for one, then hand its card to up to nine friends. Each of you ticks your own; you see each other's ticks on that habit, and nothing else."}</p>
+          <button class="btn" type="button" data-gang-start>Start a gang</button></div>`;
     return `<section class="panel span-12 flock-gangs" aria-labelledby="gangs-h">
-      <div class="panel-head"><h2 id="gangs-h">Gangs</h2><div class="gangs-head-side">${noteTrigger('gangs', 'Why gangs?')}
-        ${starting || full ? '' : '<button class="btn" type="button" data-gang-start>Start a gang</button>'}</div></div>
-      ${starting ? startForm(habits) : ''}
-      ${gangs.length ? `<div class="gang-list">${gangs.map(gangCard).join('')}</div>`
-        : starting ? '' : '<p class="note">Some habits are easier with company. Start a gang for one, then hand its card to up to nine friends. Each of you ticks your own; you see each other\'s ticks on that habit, and nothing else.</p>'}
+      <div class="panel-head"><h2 id="gangs-h">Gangs</h2><div class="flock-head-side"><p>${gangs.length ? plural(gangs.length, 'gang') : 'None yet'}</p>${noteTrigger('gangs', 'Why gangs?')}</div></div>
+      <div class="gang-list">${gangs.map(gangCard).join('')}${tile}</div>
     </section>`;
   }
 
@@ -111,8 +123,28 @@ export function createGangs({ store, sb, toast, rerender, today }) {
     </form>`;
   }
 
+  // When a gang ends: a certificate (a shojo), with the gang cranes everyone folded and each
+  // member's figures, to keep on your Year (D-047).
+  function certificate(g, i) {
+    const { cranes, periods, unit } = gangCranes(g, parseDay(g.ends));
+    const s = gangStatus(g, parseDay(g.ends));
+    const members = s.members.filter((x) => x.linked);
+    return `<article class="gang gang--done" aria-labelledby="gang-h-${i}">
+      <div class="certificate">
+        <p class="cert-kicker" aria-hidden="true">シュウリョウ</p>
+        <h3 id="gang-h-${i}">${esc(g.name)}</h3>
+        <p class="note">${sched(g)} · ${short(g.starts)} to ${short(g.ends)} · ${lengthOf(g.starts, g.ends)} days</p>
+        <p class="cert-cranes"><b>${cranes}</b><span>of ${periods} ${unitText(periods, unit)} everyone folded</span></p>
+        ${members.length ? `<ul class="cert-members">${members.map((x) => `<li>${seal(x.code)}<span class="cert-name">${esc(x.name)}</span><span class="cert-figure">${x.done} of ${x.due} due</span></li>`).join('')}</ul>` : ''}
+        <p class="note">Your habit stays in your tracker. Remove it on the Habits page whenever you're done with it.</p>
+        <div class="backup-actions"><button class="btn" type="button" data-gang-keep="${g.id}">Keep it on my Year</button><button class="btn btn--quiet" type="button" data-gang-again="${g.id}">Fold it again</button></div>
+      </div>
+    </article>`;
+  }
+
   function gangCard(g, i) {
     const s = gangStatus(g, today());
+    if (s.phase === 'over') return certificate(g, i);
     const me = g.members.find((x) => x.me);
     const owner = me?.owner;
     const linkedHere = Object.entries(store.get().links || {}).some(([, gang]) => gang === g.id);
@@ -135,7 +167,7 @@ export function createGangs({ store, sb, toast, rerender, today }) {
       <div class="stamps-scroll"><table class="stamps"><caption class="visually-hidden">Who folded, the last ${plural(stamps.length, 'day')}</caption>
         <thead><tr><th scope="col"><span class="visually-hidden">Member</span></th>${stamps.map((r) => `<th scope="col" title="${short(r.key)}">${NARROW.format(new Date(r.day.y, r.day.m - 1, r.day.d))}<small>${r.day.d}</small></th>`).join('')}<th scope="col">So far</th></tr></thead>
         <tbody>${s.members.map((mem, k) => `<tr>
-          <th scope="row">${hanko(mem.code)}<span class="stamp-name">${esc(mem.name)}${mem.owner ? ' <em>runs it</em>' : ''}</span></th>
+          <th scope="row"><span class="stamp-name">${esc(mem.name)}${mem.owner ? ' <em>runs it</em>' : ''}</span></th>
           ${stamps.map((r) => `<td>${r.rest ? '<i class="stamp stamp--rest" title="Rest day"></i>' : r.stamped[k] ? `<i class="stamp stamp--on" title="Folded on ${short(r.key)}"></i>` : `<i class="stamp" title="Not folded on ${short(r.key)}"></i>`}</td>`).join('')}
           <td class="stamp-sum">${mem.linked ? `${mem.done} of ${mem.due} due${runText(mem.run)}` : 'No habit for it yet'}</td>
         </tr>`).join('')}</tbody>
@@ -169,8 +201,7 @@ export function createGangs({ store, sb, toast, rerender, today }) {
     return `<article class="gang" aria-labelledby="gang-h-${i}">
       <header><h3 id="gang-h-${i}">${esc(g.name)}</h3><p class="note">${sched(g)} · ${short(g.starts)} to ${short(g.ends)}${s.phase === 'on' ? ` · day ${s.day} of ${s.length}` : ''} · ${plural(g.members.length, 'member')}</p></header>
       ${me && !me.linked && !linkedHere && s.phase !== 'over' ? `<p class="gang-unlinked">${esc(g.name)} isn't in your tracker yet. <button class="btn btn--quiet" type="button" data-gang-add="${g.id}">Add it to my habits</button></p>` : ''}
-      <div class="gang-today">${crane(frac, i)}<div>${todayText}</div></div>
-      ${banner}
+      <div class="gang-body"><div class="gang-today">${crane(frac)}<div>${todayText}</div></div>${banner}</div>
       ${settings}
     </article>`;
   }
@@ -220,7 +251,22 @@ export function createGangs({ store, sb, toast, rerender, today }) {
       const g = gangs.find((x) => !before.has(x.id));
       if (g) addHabit(g);
     },
-    reset() { gangs = []; starting = false; draft = null; error = ''; confirm = ''; open.clear(); for (const k of Object.keys(fresh)) delete fresh[k]; },
+    // The stamp book on the Year view: the gangs you kept that ended in `year` (D-047).
+    stampBook(year) {
+      const kept = keepsakes.filter((k) => k.ends.startsWith(`${year}-`));
+      if (!kept.length) return '';
+      return `<section class="panel span-12 stamp-book" aria-labelledby="book-h">
+        <div class="panel-head"><h2 id="book-h">Stamp book</h2><p>${plural(kept.length, 'gang')} finished in ${year}</p></div>
+        <div class="book-scroll"><ol class="book">${kept.map((k) => `<li class="book-page">
+          <h3>${esc(k.name)}</h3>
+          <p class="note">${short(k.starts)} to ${short(k.ends)}</p>
+          <div class="book-seals">${k.members.map((x) => seal(x.code)).join('')}</div>
+          <p class="book-cranes"><b>${k.cranes}</b> of ${k.periods} ${unitText(k.periods, k.unit)} everyone folded</p>
+          <ul class="visually-hidden">${k.members.map((x) => `<li>${esc(x.name)}: ${x.done} of ${x.due} due</li>`).join('')}</ul>
+        </li>`).join('')}</ol></div>
+      </section>`;
+    },
+    reset() { keepsakes = []; gangs = []; starting = false; draft = null; error = ''; confirm = ''; open.clear(); for (const k of Object.keys(fresh)) delete fresh[k]; },
     // "Fold it with friends" from the Habits page: the start form, filled in from that habit.
     startFrom(habitId) { starting = true; draft = blankDraft(habitId); error = ''; },
     onToggle(d) {
@@ -258,6 +304,27 @@ export function createGangs({ store, sb, toast, rerender, today }) {
       return true;
     },
     onClick(t) {
+      // A finished gang: keep its certificate on the Year, leave it, and maybe start it again.
+      const keep = t.closest('[data-gang-keep], [data-gang-again]');
+      if (keep) {
+        const again = keep.matches('[data-gang-again]');
+        const id = keep.dataset.gangKeep || keep.dataset.gangAgain;
+        const g = gangs.find((x) => x.id === id);
+        if (!g) return true;
+        const habit = Object.entries(store.get().links || {}).find(([, gang]) => gang === id)?.[0] || '';
+        const k = keepsakeOf(g);
+        act(async (c) => {
+          if (k.members.length) await saveKeepsake(c, userId(), k);
+          await leaveGang(c, id);
+          if (habit) store.linkChallenge(habit, null);
+          await load();
+          if (again) {
+            starting = true;
+            draft = { ...blankDraft(habit), name: g.name.slice(0, GANG_NAME_MAX), cadence: g.cadence, weekdays: g.weekdays || [1, 2, 3, 4, 5], timesPerWeek: g.timesPerWeek || 3 };
+          }
+        }, () => toast(again ? `${g.name} is in your stamp book. Here it is again: pick the dates, then hand out new cards.` : `${g.name} is in your stamp book, on the Year.`));
+        return true;
+      }
       if (t.closest('[data-gang-start]')) { starting = true; draft = blankDraft(); error = ''; rerender(); return true; }
       if (t.closest('[data-gang-cancel]')) { starting = false; draft = null; error = ''; rerender(); return true; }
       const add = t.closest('[data-gang-add]');

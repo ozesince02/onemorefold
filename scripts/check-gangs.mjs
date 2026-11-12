@@ -75,4 +75,31 @@ assert.equal(r['habits|jog'].row.challenge_id, null, 'unlinked habits say so');
 assert.deepEqual(rowsToState({ habits: [r['habits|run'].row, r['habits|jog'].row] }).links, { run: G }, 'and the link comes back');
 assert.deepEqual(mergeStates({ months: {}, colors: {}, years: {}, links: { run: G } }, { months: {}, links: { jog: G } }).links, { run: G }, "the account's link wins for the same gang");
 
+// Gang cranes (D-047): the days everyone in the gang folded.
+{
+  const { gangCranes, keepsakeOf } = await import('../src/lib/gangs.js');
+  const day = (d) => `2026-11-${String(d).padStart(2, '0')}`;
+  const all = (n) => Array.from({ length: n }, (_, i) => day(i + 1));
+  const [g] = groupGangs([
+    row(1, 'oze', all(10)),
+    row(2, 'Asha', [day(1), day(2), day(3), day(5)]),
+    row(3, 'Ravi', [day(4), day(5)], { joined_at: '2026-11-04T09:00:00Z' }),
+    row(4, 'jo', [], { linked: false }),
+  ]);
+  // Days 1-3: oze and Asha (Ravi not in yet); day 4: Asha missed; day 5: all three.
+  assert.deepEqual(gangCranes(g, { y: 2026, m: 11, d: 5 }), { cranes: 4, periods: 5, unit: 'day' }, 'counted from when each joined, unlinked members aside');
+  assert.deepEqual(gangCranes(g, { y: 2026, m: 10, d: 30 }), { cranes: 0, periods: 0, unit: 'day' }, 'nothing before it starts');
+  const [gym] = groupGangs([row(1, 'oze', [day(2), day(4)], { cadence: 'weekdays', weekdays: [1, 3, 5] })]);
+  assert.equal(gangCranes(gym, { y: 2026, m: 11, d: 6 }).periods, 3, 'only due days count: Mon 2, Wed 4, Fri 6');
+  const [swim] = groupGangs([
+    row(1, 'oze', [day(1), day(3), day(6), day(9)], { cadence: 'weekly' }),
+    row(2, 'Asha', [day(2)], { cadence: 'weekly' }),
+  ]);
+  assert.deepEqual(gangCranes(swim, { y: 2026, m: 11, d: 14 }), { cranes: 1, periods: 2, unit: 'week' }, 'weekly: both folded the first week, Asha not the second');
+  const k = keepsakeOf({ ...g, ends: '2026-11-30' });
+  assert.equal(k.periods, 30, 'a keepsake counts the whole gang');
+  assert.deepEqual(k.members.map((x) => x.name), ['oze', 'Asha', 'Ravi'], 'members who took part, in the order they joined');
+  assert.ok(k.members.every((x) => x.done <= x.due), 'done never above due');
+}
+
 console.log('gangs: all checks pass');

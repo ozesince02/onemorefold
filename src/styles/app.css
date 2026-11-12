@@ -104,7 +104,7 @@
 .habit-grid thead th.is-today { color: var(--on-inverse); background: var(--inverse); border-radius: 3px; }
 .habit-grid thead th.weekend { color: var(--ink-3); }
 .habit-grid th.h-name { text-align: left; position: sticky; left: 0; z-index: 2; background: var(--sheet); padding: 4px 10px 4px 0; }
-.h-name-inner { display: grid; grid-template-columns: 12px 1fr; gap: 10px; align-items: center; }
+.h-name-inner { display: grid; grid-template-columns: 12px 1fr; gap: 3px 10px; align-items: center; }
 .h-name-inner i { width: 12px; height: 12px; background: var(--c); display: block; }
 .h-name-inner b { font-weight: 700; font-size: 14px; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .h-name-inner small { grid-column: 2; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
@@ -382,7 +382,6 @@ td.is-today .cell:not([aria-pressed="true"]) { outline: 2px solid var(--ink); ou
 /* ---------- Flock (D-044): buddies as name cards (meishi), your tag as a hanko seal ---------- */
 .flock-title h1 { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .flock-sfx { font-size: 26px; rotate: -6deg; }
-.flock-why { grid-row: 1 / 3; grid-column: 2; align-self: center; }
 .flock-slip, .flock-carve { max-width: 640px; display: grid; gap: 12px; justify-items: start; }
 .flock-slip h2 { font-size: 22px; }
 .flock-carve .panel-head { justify-self: stretch; }
@@ -403,7 +402,11 @@ td.is-today .cell:not([aria-pressed="true"]) { outline: 2px solid var(--ink); ou
   border: 2.5px solid var(--accent); border-radius: 50%; color: var(--accent-ink);
   font-family: var(--display); font-size: 12px; letter-spacing: .02em;
 }
+.hanko[data-len="4"] { font-size: 11px; }
+.hanko[data-len="5"] { font-size: 9px; letter-spacing: 0; }
 .hanko--big { width: 78px; height: 78px; font-size: 18px; border-width: 3.5px; }
+.hanko--big[data-len="4"] { font-size: 17px; }
+.hanko--big[data-len="5"] { font-size: 14px; }
 .my-card { display: flex; align-items: center; gap: 16px; }
 .my-card-tag { font-family: var(--display); font-size: 24px; line-height: 1.15; overflow-wrap: anywhere; }
 .my-card-tag span { color: var(--accent-ink); }
@@ -411,7 +414,7 @@ td.is-today .cell:not([aria-pressed="true"]) { outline: 2px solid var(--ink); ou
 .flock-change summary, .meishi-share summary { cursor: pointer; font-weight: 700; color: var(--link); }
 .flock-change[open] summary { margin-bottom: 12px; }
 
-.meishi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 20px; }
+.meishi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 20px; align-items: start; }
 .meishi {
   display: grid; gap: 6px; align-content: start; padding: 14px 16px 16px; rotate: -.6deg;
   background: var(--sheet); border-top: 8px solid var(--paper); filter: var(--lift);
@@ -422,20 +425,22 @@ td.is-today .cell:not([aria-pressed="true"]) { outline: 2px solid var(--ink); ou
 .meishi--matcha { --paper: var(--matcha); }
 .meishi--yamabuki { --paper: var(--yamabuki); }
 .meishi--kraft { --paper: var(--kraft); }
-.meishi header { display: flex; justify-content: space-between; align-items: start; gap: 10px; margin-bottom: 4px; }
+.meishi header { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 46px; margin-bottom: 6px; }
 .meishi h3 { font-family: var(--display); font-weight: 400; font-size: 20px; line-height: 1.15; overflow-wrap: anywhere; }
-.meishi-figure b { font-family: var(--display); font-weight: 400; font-size: 20px; }
+.meishi-figure b { display: block; font-family: var(--display); font-weight: 400; font-size: 24px; line-height: 1.1; }
+.meishi-figure span { display: block; font-size: 14px; color: var(--ink-2); }
 .meishi-trend { font-weight: 700; font-size: 14px; color: var(--ink-2); }
 .meishi-trend--rising { color: var(--good); }
 .meishi-habits { list-style: none; padding: 0; margin: 4px 0 0; display: grid; gap: 2px; font-size: 14px; }
 .meishi-habits span { font-weight: 700; }
 .meishi-share { margin-top: 8px; padding-top: 8px; border-top: 2px dashed var(--bg-3); }
-.meishi-share summary { font-size: 14px; }
+.meishi-share summary, .flock-change summary, .gang-settings summary { font-size: 14px; }
 .meishi-share .choice, .share-habits { margin-top: 10px; }
 .meishi-remove { display: grid; gap: 8px; justify-items: start; margin-top: 10px; font-size: 14px; }
 .meishi-remove-link { margin-top: 10px; }
 .meishi--new { background: var(--bg); border: 2px dashed var(--ink-3); filter: none; rotate: 0deg; justify-items: start; }
 .meishi--new h3 { font-size: 18px; }
+.meishi--new .btn { margin-top: 6px; }
 .share-habits em { font-style: normal; color: var(--ink-3); font-weight: 500; }
 
 .fresh-card { margin-bottom: 14px; }
@@ -448,23 +453,36 @@ td.is-today .cell:not([aria-pressed="true"]) { outline: 2px solid var(--ink); ou
 .edit-row .private-toggle { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; font-weight: 500; font-size: 14px; cursor: pointer; }
 .edit-row .private-toggle input { width: 18px; height: 18px; padding: 0; flex: none; accent-color: var(--accent); }
 /* Gangs (D-046): today's crane folded one fold per member, and the banner of stamps */
-.flock-gangs .panel-head { flex-wrap: wrap; }
-.gangs-head-side { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.gang-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px 16px; align-items: end; margin-bottom: 20px; padding: 16px; background: var(--bg); }
+/* Both Flock panels: the heading, then the note and the crane on the right, centred on one line */
+.flock-gangs .panel-head, .flock-buddies .panel-head { flex-wrap: wrap; align-items: center; }
+.flock-head-side { display: flex; align-items: center; gap: 12px 16px; flex-wrap: wrap; justify-content: flex-end; }
+.gang-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px 16px; align-items: end; }
 .gang-form .wide { grid-column: 1 / -1; }
 .gang-form label { display: grid; gap: 4px; font-size: 13px; font-weight: 700; color: var(--ink-2); }
 .gang-form input, .gang-form select, .gang-edit input { font: inherit; font-size: 16px; padding: 8px 10px; border: 0; border-bottom: 2px solid var(--ink); border-radius: 0; background: var(--sheet); color: var(--ink); min-width: 0; }
 .gang-form input:focus, .gang-form select:focus, .gang-edit input:focus { outline: 2px solid var(--link); outline-offset: 0; }
 .gang-days { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px 12px; grid-column: 1 / -1; }
 .gang-days label { display: flex; align-items: center; gap: 4px; font-size: 14px; }
-.gang-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 20px; }
-.gang { display: grid; gap: 14px; align-content: start; padding: 16px 18px 18px; background: var(--sheet); border: 2px solid var(--bg-3); }
+.gang-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 480px), 1fr)); gap: 24px; align-items: start; }
+.gang {
+  container-type: inline-size; display: grid; gap: 16px; align-content: start; padding: 16px 20px 18px;
+  background: var(--sheet); border-top: 8px solid var(--ai); filter: var(--lift);
+}
+.gang > header { display: grid; gap: 2px; }
+.gang--new { background: var(--bg); border: 2px dashed var(--ink-3); filter: none; justify-items: start; gap: 10px; }
+.gang--new h3 { font-size: 18px; }
+.gang--starting { justify-items: stretch; }
+@container (min-width: 720px) {
+  .gang-body { display: grid; grid-template-columns: minmax(180px, 220px) 1fr; gap: 28px; align-items: start; }
+  .gang-body .gang-today { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .gang-body .gang-crane { width: 120px; }
+}
 .gang h3 { font-family: var(--display); font-weight: 400; font-size: 22px; line-height: 1.15; overflow-wrap: anywhere; }
 .gang-today { display: flex; align-items: center; gap: 16px; }
 .gang-today-main { font-weight: 900; font-size: 17px; }
-.gang-crane { width: 96px; height: auto; flex: none; }
-.gang-crane-paper { fill: var(--bg-2); stroke: var(--ink-3); stroke-width: .6; stroke-dasharray: 2 2; }
-.gang-crane-folded { fill: var(--accent); }
+.gang-crane { position: relative; display: block; flex: none; width: 96px; }
+.gang-crane .crane-mark { display: block; width: 100%; height: auto; }
+.gang-crane-folded { position: absolute; inset: 0; clip-path: inset(calc((1 - var(--fold)) * 100%) 0 0 0); }
 .gang-unlinked { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; padding: 10px 12px; background: var(--bg); font-size: 14px; font-weight: 700; }
 .gang-banner { display: flex; gap: 10px; align-items: stretch; }
 .nobori { flex: none; width: 34px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 8px 0; background: var(--ai); color: var(--on-color); font-family: var(--display); font-size: 17px; line-height: 1.05; }
@@ -473,14 +491,14 @@ td.is-today .cell:not([aria-pressed="true"]) { outline: 2px solid var(--ink); ou
 .stamps th, .stamps td { padding: 4px 3px; text-align: center; }
 .stamps thead th { font-weight: 700; color: var(--ink-2); line-height: 1.1; }
 .stamps thead small { display: block; font-weight: 500; color: var(--ink-3); }
-.stamps tbody th { display: flex; align-items: center; gap: 8px; text-align: left; font-weight: 700; white-space: nowrap; padding-right: 10px; }
+.stamps tbody th { text-align: left; font-weight: 700; white-space: nowrap; padding-right: 12px; }
 .stamps tbody th em { font-style: normal; font-weight: 500; color: var(--ink-3); font-size: 12px; }
 .stamp-name { max-width: 12ch; overflow: hidden; text-overflow: ellipsis; }
 .stamp { display: inline-block; width: 18px; height: 18px; border-radius: 50%; border: 2px dashed var(--ink-3); vertical-align: middle; }
 .stamp--on { border: 2.5px solid var(--accent); background: var(--accent); rotate: -10deg; }
 .stamp--rest { border: 0; width: 6px; height: 6px; background: var(--bg-3); }
 .stamps td.stamp-sum { text-align: left; white-space: nowrap; color: var(--ink-2); padding-left: 10px; }
-.hanko--small { width: 30px; height: 30px; font-size: 9px; border-width: 2px; }
+.gang-settings { padding-top: 12px; border-top: 2px dashed var(--bg-3); }
 .gang-settings summary { cursor: pointer; font-weight: 700; color: var(--link); }
 .gang-settings[open] { display: grid; gap: 10px; justify-items: start; }
 .gang-settings[open] summary { margin-bottom: 4px; }
@@ -488,10 +506,37 @@ td.is-today .cell:not([aria-pressed="true"]) { outline: 2px solid var(--ink); ou
 .gang-edit label { display: grid; gap: 4px; font-size: 13px; font-weight: 700; color: var(--ink-2); }
 .gang-edit .note { flex-basis: 100%; }
 .gang-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 14px; }
-.gang-mark { display: inline-block; padding: 0 6px; border-radius: 999px; background: var(--inverse); color: var(--on-inverse); font-size: 11px; font-weight: 700; line-height: 1.5; vertical-align: 1px; }
+/* A finished gang (D-047): a certificate (shojo) with a double red frame, to keep on the Year */
+.gang--done { border-top: 0; padding: 14px; }
+.certificate { display: grid; gap: 10px; justify-items: center; text-align: center; padding: 18px 16px; border: 3px double var(--accent); }
+.cert-kicker { font-family: var(--display); font-size: 13px; letter-spacing: .3em; color: var(--accent-ink); }
+.certificate h3 { font-family: var(--display); font-weight: 400; font-size: 24px; line-height: 1.15; overflow-wrap: anywhere; }
+.cert-cranes b { display: block; font-family: var(--display); font-weight: 400; font-size: 44px; line-height: 1; color: var(--accent-ink); }
+.cert-cranes span { display: block; margin-top: 4px; font-size: 14px; color: var(--ink-2); }
+.cert-members { list-style: none; margin: 4px auto 0; padding: 14px 0 0; display: grid; gap: 8px; justify-self: stretch; width: 100%; max-width: 300px; border-top: 2px dashed var(--bg-3); }
+.cert-members li { display: grid; grid-template-columns: 46px 1fr auto; align-items: center; gap: 10px; text-align: left; }
+.cert-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cert-figure { color: var(--ink-2); font-size: 14px; font-variant-numeric: tabular-nums; }
+.certificate .note { max-width: 40ch; }
+.certificate .backup-actions { justify-content: center; margin-top: 4px; }
+
+/* The stamp book on the Year (D-047): a goshuin-cho, kraft covers, a page per finished gang */
+.book-scroll { overflow-x: auto; }
+.book { list-style: none; margin: 0; padding: 10px; display: flex; gap: 3px; width: max-content; background: var(--kraft); filter: var(--lift); }
+.book-page { width: 196px; display: grid; gap: 8px; justify-items: center; align-content: start; padding: 16px 14px 18px; background: var(--sheet); text-align: center; }
+.book-page h3 { font-family: var(--display); font-weight: 400; font-size: 18px; line-height: 1.15; overflow-wrap: anywhere; }
+.book-seals { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 4px 0; }
+.book-seals .hanko:nth-child(odd) { rotate: 6deg; }
+.book-cranes { font-size: 13px; color: var(--ink-2); }
+.book-cranes b { display: block; font-family: var(--display); font-weight: 400; font-size: 30px; line-height: 1.05; color: var(--accent-ink); }
+
+.gang-mark {
+  display: inline-flex; align-items: center; height: 17px; padding: 0 7px 2px; vertical-align: 1px;
+  border: 1.5px solid currentColor; border-radius: 999px; font-size: 11px; font-weight: 700; line-height: 1; letter-spacing: .02em;
+}
+.tag-name .gang-mark { margin-left: 4px; color: var(--ink-2); }
 .edit-row .gang-note { font-weight: 500; }
 .edit-row .gang-note .seg-link { margin-right: 6px; }
 @media (max-width: 760px) {
-  .flock-why { grid-row: auto; grid-column: 1; }
   .meishi-grid { grid-template-columns: 1fr; }
 }

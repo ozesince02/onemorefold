@@ -16,11 +16,11 @@
 export const NOTICES = [
   {
     show: true,
-    id: 'reminders-app-closed',
-    until: '2026-11-24',
+    id: 'flock',
+    until: null,
     label: 'News from the folding table',
-    panels: ['New: reminders', 'even with the app closed', 'Still free, no ads'],
-    link: { text: 'Turn them on', href: 'app' },
+    panels: ['New: Flock', 'Buddies and gangs', 'Fold habits together'],
+    link: { text: 'Find your flock', href: 'flock' },
   },
   {
     show: true,

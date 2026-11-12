@@ -3,6 +3,28 @@
 What changed, for people using the app. Why it changed lives in [docs/decisions.md](docs/decisions.md).
 Dates are when the work landed.
 
+## 0.18.0 — 13 November 2026
+
+### Added
+- **When a gang ends** (D-047):
+  - **A certificate:** its card turns into one, with the days everyone folded and each member's
+    seal and figures.
+  - **Keep it on your Year:** it goes into a new stamp book on the Year view, a page per gang.
+  - **Fold it again:** starts the same habit as a new gang, ready for new cards.
+
+### Changed
+- The noren on the front page now announces Flock (buddies and gangs), linking straight to it,
+  and takes turns with "free for everyone". The reminders notice has come down.
+
+### Fixed
+- **Flock, tidied up.**
+  - **The gang mark** beside a habit is a light outlined pill, centred, sitting close to the name.
+  - **Name cards** fit what they hold, and their figures no longer wrap mid-phrase. A code of four
+    or five letters fits its seal.
+  - **A gang** is a sheet like a name card, folds our own crane, and uses the whole width.
+  - **"Start a gang"** is a tile beside your gangs, like "Hand over your card".
+  - **Both crane notes** sit in their own panels.
+
 ## 0.17.0 — 12 November 2026
 
 ### Added
