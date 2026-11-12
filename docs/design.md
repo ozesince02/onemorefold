@@ -140,6 +140,9 @@ Shadows are allowed **only** on paper lying on paper. Buttons and controls are f
 - **Flock panels:** both follow the same pattern.
   - **Head:** the heading, then the count and the crane note on the right, centred on one line.
   - **Body:** a shelf of scrolls (D-048).
+- **Reorder list** (`.reorder`, `src/ui/reorder.js`, D-049): on the Habits page, only the names in
+  washi rows (grip, colour square, name, up and down). The row being dragged lifts onto a sheet
+  with `--lift-high`; the arrows that can't move hide.
 - **Shelf and scroll** (`.shelf`, `.scroll`, `src/ui/shelf.js`, D-048):
   - **The shelf:** a wooden plank (`--wood` tokens). Rolls stand on it with a steady tilt per item.
   - **A roll:** knobs, round paper ends, a cord in the item's paper colour, a vertical name label

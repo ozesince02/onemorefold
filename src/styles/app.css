@@ -209,6 +209,26 @@ td.is-today .cell:not([aria-pressed="true"]) { outline: 2px solid var(--ink); ou
 
 /* Habits editor */
 .editor { display: grid; gap: 10px; }
+/* Reordering habits (D-049): only the names, in order, to drag into place */
+.editor-tools { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+.reorder .panel-head { align-items: center; }
+.reorder > .note { margin-bottom: 14px; }
+.reorder-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.reorder-item {
+  display: grid; grid-template-columns: 28px 12px minmax(0, 1fr) auto; align-items: center; gap: 12px;
+  min-height: 52px; padding: 4px 8px 4px 6px; background: var(--bg); border-radius: 4px;
+  cursor: grab; user-select: none; transition: transform .18s ease;
+}
+.reorder-item > i { width: 12px; height: 12px; background: var(--c); }
+.reorder-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reorder-grip { display: grid; place-items: center; height: 40px; color: var(--ink-3); touch-action: none; cursor: grab; }
+.reorder-grip svg { width: 12px; height: 18px; fill: currentColor; }
+.reorder-moves { display: flex; gap: 4px; }
+.reorder-moves .icon-btn { width: 40px; height: 40px; }
+.reorder-moves .icon-btn:disabled { visibility: hidden; } /* the first can't go up, the last can't go down */
+.reorder-item.is-dragging { position: relative; z-index: 2; background: var(--sheet); filter: var(--lift-high); transition: none; cursor: grabbing; }
+.reorder-list.is-sorting .reorder-item:not(.is-dragging) { pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .reorder-item { transition: none; } }
 .edit-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) 120px 96px 96px auto; gap: 12px; align-items: end; background: var(--sheet); padding: 14px 16px; filter: var(--lift); }
 .edit-row label, .add-form label { display: grid; gap: 4px; font-size: 13px; font-weight: 700; color: var(--ink-2); }
 .edit-row input, .add-form input, .wish-form textarea, .fold-form textarea {
