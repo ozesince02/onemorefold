@@ -9,6 +9,7 @@ import { gangStatus, stampRows, namesText, endFor, parseDay, dayKey, LENGTHS, GA
 import { loadGangs, createGang, editGang, leaveGang, removeMember, createCard } from '../lib/buddies-api.js';
 import { APP_PATH } from '../config.js';
 import { noteTrigger } from './note-trigger.js';
+import { craneMark } from './paper.js';
 
 const NARROW = new Intl.DateTimeFormat('en-GB', { weekday: 'narrow' });
 const short = (key) => { const { m, d } = parseDay(key); return `${d} ${monthShort(m)}`; };
@@ -17,15 +18,12 @@ const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const sched = (g) => { const t = describe({ cadence: g.cadence, weekdays: g.weekdays, timesPerWeek: g.timesPerWeek }); return t[0].toUpperCase() + t.slice(1); };
 const runText = ({ n, unit }) => (n >= 2 ? ` · ${n}-${unit} run` : '');
 const CONTROL = /[\x00-\x1f\x7f]/;
-const hanko = (code, extra = '') => `<span class="hanko hanko--small${extra}" aria-hidden="true">${esc(code)}</span>`;
 
-// The gang's crane, folded as far as the gang has folded today: frac 0 to 1.
-function crane(frac, i) {
-  const y = (1 - frac) * 44;
-  const shape = '<polygon points="32,4 44,24 32,22"/><polygon points="8,26 32,22 54,24 32,32"/><polygon points="8,26 3,10 13,24"/><polygon points="54,24 61,12 51,21"/>';
-  return `<svg class="gang-crane" viewBox="0 0 64 36" aria-hidden="true">
-    <defs><clipPath id="gang-fold-${i}"><rect x="0" y="${y.toFixed(1)}" width="64" height="44"/></clipPath></defs>
-    <g class="gang-crane-paper">${shape}</g><g class="gang-crane-folded" clip-path="url(#gang-fold-${i})">${shape}</g></svg>`;
+// The gang's crane: our own crane mark, in plain paper, coloured in from the bottom as far as the
+// gang has folded today (frac 0 to 1).
+function crane(frac) {
+  return `<span class="gang-crane" style="--fold:${Math.max(0, Math.min(1, frac)).toFixed(3)}" aria-hidden="true">
+    ${craneMark('var(--bg-3)', 'var(--bg-3)')}<span class="gang-crane-folded">${craneMark()}</span></span>`;
 }
 
 export function createGangs({ store, sb, toast, rerender, today }) {
@@ -78,12 +76,17 @@ export function createGangs({ store, sb, toast, rerender, today }) {
   function render() {
     const habits = store.view(monthKey(today().y, today().m)).habits;
     const full = gangs.length >= GANG_LIMIT;
+    // Like Buddies: the cards, then a dashed tile to start another, which opens into the form.
+    const tile = full
+      ? `<div class="gang gang--new"><p class="note">You're in ${GANG_LIMIT} gangs, the most there can be.</p></div>`
+      : starting
+        ? `<div class="gang gang--new gang--starting"><h3>Start a gang</h3>${startForm(habits)}</div>`
+        : `<div class="gang gang--new"><h3>Start a gang</h3>
+          <p class="note">${gangs.length ? 'Another habit, another gang.' : "Some habits are easier with company. Start a gang for one, then hand its card to up to nine friends. Each of you ticks your own; you see each other's ticks on that habit, and nothing else."}</p>
+          <button class="btn" type="button" data-gang-start>Start a gang</button></div>`;
     return `<section class="panel span-12 flock-gangs" aria-labelledby="gangs-h">
-      <div class="panel-head"><h2 id="gangs-h">Gangs</h2><div class="gangs-head-side">${noteTrigger('gangs', 'Why gangs?')}
-        ${starting || full ? '' : '<button class="btn" type="button" data-gang-start>Start a gang</button>'}</div></div>
-      ${starting ? startForm(habits) : ''}
-      ${gangs.length ? `<div class="gang-list">${gangs.map(gangCard).join('')}</div>`
-        : starting ? '' : '<p class="note">Some habits are easier with company. Start a gang for one, then hand its card to up to nine friends. Each of you ticks your own; you see each other\'s ticks on that habit, and nothing else.</p>'}
+      <div class="panel-head"><h2 id="gangs-h">Gangs</h2><div class="flock-head-side"><p>${gangs.length ? plural(gangs.length, 'gang') : 'None yet'}</p>${noteTrigger('gangs', 'Why gangs?')}</div></div>
+      <div class="gang-list">${gangs.map(gangCard).join('')}${tile}</div>
     </section>`;
   }
 
@@ -135,7 +138,7 @@ export function createGangs({ store, sb, toast, rerender, today }) {
       <div class="stamps-scroll"><table class="stamps"><caption class="visually-hidden">Who folded, the last ${plural(stamps.length, 'day')}</caption>
         <thead><tr><th scope="col"><span class="visually-hidden">Member</span></th>${stamps.map((r) => `<th scope="col" title="${short(r.key)}">${NARROW.format(new Date(r.day.y, r.day.m - 1, r.day.d))}<small>${r.day.d}</small></th>`).join('')}<th scope="col">So far</th></tr></thead>
         <tbody>${s.members.map((mem, k) => `<tr>
-          <th scope="row">${hanko(mem.code)}<span class="stamp-name">${esc(mem.name)}${mem.owner ? ' <em>runs it</em>' : ''}</span></th>
+          <th scope="row"><span class="stamp-name">${esc(mem.name)}${mem.owner ? ' <em>runs it</em>' : ''}</span></th>
           ${stamps.map((r) => `<td>${r.rest ? '<i class="stamp stamp--rest" title="Rest day"></i>' : r.stamped[k] ? `<i class="stamp stamp--on" title="Folded on ${short(r.key)}"></i>` : `<i class="stamp" title="Not folded on ${short(r.key)}"></i>`}</td>`).join('')}
           <td class="stamp-sum">${mem.linked ? `${mem.done} of ${mem.due} due${runText(mem.run)}` : 'No habit for it yet'}</td>
         </tr>`).join('')}</tbody>
@@ -169,8 +172,7 @@ export function createGangs({ store, sb, toast, rerender, today }) {
     return `<article class="gang" aria-labelledby="gang-h-${i}">
       <header><h3 id="gang-h-${i}">${esc(g.name)}</h3><p class="note">${sched(g)} · ${short(g.starts)} to ${short(g.ends)}${s.phase === 'on' ? ` · day ${s.day} of ${s.length}` : ''} · ${plural(g.members.length, 'member')}</p></header>
       ${me && !me.linked && !linkedHere && s.phase !== 'over' ? `<p class="gang-unlinked">${esc(g.name)} isn't in your tracker yet. <button class="btn btn--quiet" type="button" data-gang-add="${g.id}">Add it to my habits</button></p>` : ''}
-      <div class="gang-today">${crane(frac, i)}<div>${todayText}</div></div>
-      ${banner}
+      <div class="gang-body"><div class="gang-today">${crane(frac)}<div>${todayText}</div></div>${banner}</div>
       ${settings}
     </article>`;
   }

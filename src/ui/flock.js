@@ -35,7 +35,7 @@ const CARD_PAPERS = ['sora', 'sakura', 'matcha', 'yamabuki', 'kraft'];
 const dayMonth = (ms) => { const d = new Date(ms); return `${d.getDate()} ${monthName(d.getMonth() + 1)}`; };
 const dateText = (iso) => { const [, m, d] = iso.split('-').map(Number); return `${d} ${monthName(m)}`; };
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
-const hanko = (code, size = '') => `<span class="hanko${size ? ` hanko--${size}` : ''}" aria-hidden="true">${esc(code)}</span>`;
+const hanko = (code, size = '') => `<span class="hanko${size ? ` hanko--${size}` : ''}" data-len="${String(code).length}" aria-hidden="true">${esc(code)}</span>`;
 
 export function createFlock({ view, store, getClient, toast, rerender, openAccount, today }) {
   let account = { status: 'loading' };
@@ -115,8 +115,7 @@ export function createFlock({ view, store, getClient, toast, rerender, openAccou
   function render() {
     card.token = card.token || readCard();
     const head = (note = '') => `<div class="title-row flock-title"><h1>Flock <span class="sfx flock-sfx" aria-hidden="true">ナカマ</span></h1>
-      ${note ? `<p class="finding">${note}</p>` : ''}
-      <div class="flock-why">${noteTrigger('buddies', 'Why buddies?')}</div></div>`;
+      ${note ? `<p class="finding">${note}</p>` : ''}</div>`;
 
     if (account.status === 'unavailable') {
       return `${head()}<section class="panel flock-slip"><h2>Flock needs accounts</h2><p class="note">Accounts aren't set up on this copy of One More Fold, so there's nobody to fold with yet.</p></section>`;
@@ -146,7 +145,7 @@ export function createFlock({ view, store, getClient, toast, rerender, openAccou
       <div class="board">
         ${gangs.render()}
         <section class="panel span-8 flock-buddies" aria-labelledby="buddies-h">
-          <div class="panel-head"><h2 id="buddies-h">Buddies</h2><p>${buddies.length ? `${plural(buddies.length, 'buddy', 'buddies')} · their last 7 days` : 'Nobody yet'}</p></div>
+          <div class="panel-head"><h2 id="buddies-h">Buddies</h2><div class="flock-head-side"><p>${buddies.length ? `${plural(buddies.length, 'buddy', 'buddies')} · their last 7 days` : 'Nobody yet'}</p>${noteTrigger('buddies', 'Why buddies?')}</div></div>
           <div class="meishi-grid">${buddies.map(buddyCard).join('')}${handOver()}</div>
         </section>
         <div class="span-4 side-stack">
@@ -183,7 +182,7 @@ export function createFlock({ view, store, getClient, toast, rerender, openAccou
     else {
       const trend = trendOf(f);
       const age = ageOf(f.as_of, today());
-      body = `<p class="meishi-figure"><b>${f.week_done} of ${f.week_due}</b> due, last 7 days</p>
+      body = `<p class="meishi-figure"><b>${f.week_done} of ${f.week_due}</b><span>due, last 7 days</span></p>
         ${trend ? `<p class="meishi-trend meishi-trend--${trend}">${{ rising: 'Rising', steady: 'Steady', quieter: 'Quieter lately' }[trend]}</p>` : ''}
         <p class="note">${f.month_done} of ${f.month_due} due, last 30 days${f.run >= 2 ? ` · longest run going: ${f.run} days` : ''}</p>
         ${b.habits.length ? `<ul class="meishi-habits">${b.habits.map((h) => `<li><span>${esc(h.name)}</span> ${h.done} of ${h.due} due</li>`).join('')}</ul>` : ''}
