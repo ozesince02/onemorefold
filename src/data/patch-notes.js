@@ -7,6 +7,18 @@
 
 export const PATCHES = [
   {
+    version: '0.18',
+    date: '2026-11-13',
+    title: 'Every gang gets a certificate',
+    sticker: 'シュウリョウ',
+    notes: [
+      ['A proper ending.', "When a gang's last day passes, its card turns into a certificate: how many days all of you folded, and everyone's seal. Frame-worthy. We checked."],
+      ['A stamp book for your Year.', 'Keep the certificate and it gets a page in a little book of seals on your Year. Pilgrims collect temple stamps; you collect gangs.'],
+      ['Fold it again.', 'Liked it? One tap starts the same habit as a new gang. Bring the same people, or new ones.'],
+      ['Tidier, too.', "The gang tag beside your habits lost some weight, name cards stopped stretching, and Flock's panels now match. Small things, but you'd have noticed."],
+    ],
+  },
+  {
     version: '0.17',
     date: '2026-11-12',
     title: 'Get the gang together',
