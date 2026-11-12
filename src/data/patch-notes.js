@@ -7,6 +7,18 @@
 
 export const PATCHES = [
   {
+    version: '0.19',
+    date: '2026-11-13',
+    title: 'Scrolls on the shelf',
+    sticker: 'マキモノ',
+    notes: [
+      ['Flock got furniture.', 'Your gangs and buddies now stand on wooden shelves as big rolled scrolls, a little crooked, the way scrolls stand when someone just put them down.'],
+      ['Tap to unroll.', 'A scroll opens where it stands and nudges the others to the end of the shelf. Tap again and it rolls back up. Very ninja. Less running on walls.'],
+      ['A seal at the foot.', 'Each scroll says how today stands before you open it: "2/3" folded, a rest day, or done.'],
+      ['Small screen?', "When there's no room on the shelf, the scroll comes off it and opens on its own."],
+    ],
+  },
+  {
     version: '0.18',
     date: '2026-11-13',
     title: 'Every gang gets a certificate',
