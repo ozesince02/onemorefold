@@ -7,6 +7,16 @@
 
 export const PATCHES = [
   {
+    version: '0.20.1',
+    date: '2026-11-13',
+    title: 'Every click counts',
+    sticker: 'ナオッタ',
+    notes: [
+      ['Goals and start days stick.', "Nudging the arrows on one habit, then another, used to lose the second nudge. Now every click is saved the moment you make it."],
+      ['The time picker stays put', "while you choose the hour, the minutes and AM or PM. Really, this time."],
+    ],
+  },
+  {
     version: '0.20',
     date: '2026-11-13',
     title: 'Habits, in the order you like',

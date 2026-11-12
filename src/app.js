@@ -67,10 +67,21 @@ const hashOf = (r) => (r.name === 'flock' ? '#/flock' : `#/${r.name}/${r.key || 
 
 // ---------- Render ----------
 let queued = false;
+// Editing a habit in place: time and number fields fire `change` at every step of their picker or
+// spinner (the hour, the minutes, AM/PM; each arrow click). Every step saves at once, so nothing is
+// lost, but the redraw a save asks for waits while you're in one of those fields: a redraw replaces
+// the field in your hand, which closes the time picker and swallows the next arrow click. It
+// happens when you leave them.
+const editingInPlace = () => Boolean(document.activeElement?.matches?.('.edit-row input[type="time"], .edit-row input[type="number"]'));
+let heldRender = false;
 function scheduleRender() {
   if (queued) return;
   queued = true;
-  requestAnimationFrame(() => { queued = false; render(); });
+  requestAnimationFrame(() => {
+    queued = false;
+    if (editingInPlace()) { heldRender = true; return; }
+    render();
+  });
 }
 
 function render() {
@@ -1095,27 +1106,16 @@ view.addEventListener('click', (e) => {
   if (choose) return chooseSync(choose.dataset.syncChoose);
 });
 
-// Time and number fields fire `change` at every step of their picker or spinner (the hour, then
-// the minutes, then AM/PM). Saving there redraws the editor, which closes the picker after one step,
-// so these save when you leave the field or press Enter instead.
-const savesOnLeave = (el) => el.type === 'time' || el.type === 'number';
-function saveEdit(input) {
-  if (input.dataset.field === 'name' && !input.value.trim()) { input.value = input.defaultValue; return; }
-  if (input.value.trim() === input.defaultValue) return; // unchanged: no save, no redraw
-  store.updateHabit(route().key, input.dataset.edit, { [input.dataset.field]: input.value.trim() });
-}
-view.addEventListener('focusout', (e) => {
-  const input = e.target.closest?.('[data-edit]');
-  if (input && savesOnLeave(input)) saveEdit(input);
-});
-view.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && e.target.matches?.('[data-edit]') && savesOnLeave(e.target)) saveEdit(e.target);
-});
+// Leaving the time and number fields (to anywhere but another of them): the held redraw happens.
+view.addEventListener('focusout', () => setTimeout(() => {
+  if (heldRender && !editingInPlace()) { heldRender = false; render(); }
+}, 0));
 
 view.addEventListener('change', (e) => {
   const input = e.target.closest('[data-edit]');
   if (input) {
-    if (!savesOnLeave(input)) saveEdit(input);
+    if (input.dataset.field === 'name' && !input.value.trim()) { input.value = input.defaultValue; return; }
+    store.updateHabit(route().key, input.dataset.edit, { [input.dataset.field]: input.value.trim() });
     return;
   }
   if (e.target.matches('[data-private]')) {
