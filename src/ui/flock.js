@@ -2,6 +2,8 @@
 // card (a one-time link). Everything about a buddy comes from my_buddies(), which returns only what
 // their level allows (D-029); your own figures are worked out here and published for them (D-045).
 // All text from the account (tags, habit names) is escaped with esc() when shown.
+import { gsap } from 'gsap';
+import { Flip } from 'gsap/Flip';
 import { esc } from '../lib/sanitize.js';
 import { monthName, monthKey } from '../lib/dates.js';
 import { STORE_KEY, APP_PATH } from '../config.js';
@@ -15,6 +17,10 @@ import { noteTrigger } from './note-trigger.js';
 import { createGangs } from './flock-gangs.js';
 import { describe } from '../lib/schedule.js';
 import { parseDay } from '../lib/gangs.js';
+import { shelvesHTML, scrollHTML, pulledOut } from './shelf.js';
+
+gsap.registerPlugin(Flip);
+const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // A card someone handed you waits here (this tab only) while you sign in or pick a tag.
 const CARD_KEY = `${STORE_KEY}:card`;
@@ -37,7 +43,7 @@ const dateText = (iso) => { const [, m, d] = iso.split('-').map(Number); return 
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const hanko = (code, size = '') => `<span class="hanko${size ? ` hanko--${size}` : ''}" data-len="${String(code).length}" aria-hidden="true">${esc(code)}</span>`;
 
-export function createFlock({ view, store, getClient, toast, rerender, openAccount, today }) {
+export function createFlock({ view, store, getClient, toast, rerender, drawNow = rerender, openAccount, today }) {
   let account = { status: 'loading' };
   let loaded = false;           // tag, buddies and cards fetched for this account
   let loading = null;
@@ -55,7 +61,22 @@ export function createFlock({ view, store, getClient, toast, rerender, openAccou
 
   const sb = () => getClient();
   const signedIn = () => account.status === 'signed-in' && account.id;
-  const gangs = createGangs({ store, sb, toast, rerender, today, userId: () => account.id });
+  // Shelves (D-048): one scroll open at a time, across both shelves. Widths are measured after
+  // each draw, so the shelves know how many rolls stand on them and whether a scroll fits open.
+  let openKey = null;
+  const widths = { gangs: 0, buddies: 0 };
+  const setOpen = (key) => { openKey = key; rerender(); };
+  const gangs = createGangs({ store, sb, toast, rerender, today, userId: () => account.id, setOpen });
+
+  // A scroll pulled out of its shelf opens here, over the page.
+  const pull = document.createElement('dialog');
+  pull.className = 'scroll-pull';
+  pull.setAttribute('aria-label', 'An unrolled scroll');
+  pull.setAttribute('autofocus', ''); // the scroll itself takes focus when it opens, not its roll
+  pull.tabIndex = -1;
+  document.body.appendChild(pull);
+  pull.addEventListener('close', () => { if (openKey && pull.dataset.key === openKey) { openKey = null; rerender(); } });
+  pull.addEventListener('click', (e) => { if (e.target === pull) pull.close(); });
 
   async function load() {
     if (!signedIn()) return;
@@ -106,6 +127,7 @@ export function createFlock({ view, store, getClient, toast, rerender, openAccou
     account = next;
     if (!changed) return;
     loaded = false; me = null; buddies = []; cards = []; fresh = null; published = ''; removing = '';
+    openKey = null;
     gangs.reset();
     card.peek = null; card.asked = false;
     if (signedIn()) load();
@@ -140,13 +162,14 @@ export function createFlock({ view, store, getClient, toast, rerender, openAccou
         </section>`;
     }
     if (card.token && !card.asked) queueMicrotask(peek);
+    queueMicrotask(afterDraw);
     return `${head(`You're <strong>${esc(tagText(me.name, me.code))}</strong>. Nobody can search for you: buddies join with your card.`)}
       ${card.token ? cardSlip() : ''}
       <div class="board">
-        ${gangs.render()}
+        ${gangs.render({ openKey, width: widths.gangs || estimate('gangs') })}
         <section class="panel span-8 flock-buddies" aria-labelledby="buddies-h">
           <div class="panel-head"><h2 id="buddies-h">Buddies</h2><div class="flock-head-side"><p>${buddies.length ? `${plural(buddies.length, 'buddy', 'buddies')} · their last 7 days` : 'Nobody yet'}</p>${noteTrigger('buddies', 'Why buddies?')}</div></div>
-          <div class="meishi-grid">${buddies.map(buddyCard).join('')}${handOver()}</div>
+          ${shelvesHTML(buddyItems(), { open: openKey, width: widths.buddies || estimate('buddies'), label: 'Your buddies' })}
         </section>
         <div class="span-4 side-stack">
           <section class="panel" aria-labelledby="mycard-h">
@@ -221,26 +244,86 @@ export function createFlock({ view, store, getClient, toast, rerender, openAccou
 
   function handOver() {
     const full = buddies.length >= BUDDY_LIMIT;
-    return `<div class="meishi meishi--new">
-      <h3>Hand over your card</h3>
+    const link = fresh ? `${location.origin}${APP_PATH}#/flock/card/${fresh.token}` : '';
+    return `<h3 class="scroll-title">Hand over your card</h3>
       <p class="note">${full ? `You have ${BUDDY_LIMIT} buddies, the most there can be.` : `A one-time link, good for ${INVITE_DAYS} days. Send it however you like.`}</p>
-      ${full ? '' : '<button class="btn" type="button" data-card-make>Make a card</button>'}
-    </div>`;
+      ${fresh ? `<label class="note" for="card-link">Your new card, good until ${dayMonth(fresh.until)}. It works once; this is the only time it's shown.</label>
+        <input id="card-link" class="card-link" readonly value="${esc(link)}" data-focus="card-link">
+        <div class="backup-actions"><button class="btn" type="button" data-card-copy>Copy link</button>${navigator.share ? '<button class="btn btn--quiet" type="button" data-card-share>Share</button>' : ''}</div>`
+    : full ? '' : '<button class="btn" type="button" data-card-make>Make a card</button>'}`;
+  }
+
+  // The scrolls on the Buddies shelf (D-048): one per buddy, then a blank one for handing over.
+  function buddyItems() {
+    return [
+      ...buddies.map((b, i) => ({ key: `buddy:${b.id}`, name: b.name, seal: b.code, paper: CARD_PAPERS[i % CARD_PAPERS.length], width: 290, sheet: buddyCard(b, i) })),
+      { key: 'new:buddy', name: 'New buddy', seal: '+', paper: 'kraft', ghost: true, width: 300, sheet: handOver() },
+    ];
+  }
+
+  // Before the first measurement: a fair guess from the page's width.
+  function estimate(kind) {
+    const w = view.clientWidth || 1200;
+    return kind === 'gangs' || w < 760 ? w - 48 : Math.round((w - 24) * 8 / 12) - 48;
+  }
+
+  // After each draw: measure the shelves (redrawing once if they changed), and pull out the open
+  // scroll if it didn't fit on its shelf.
+  function afterDraw() {
+    const measure = (kind) => view.querySelector(`.flock-${kind} .shelves`)?.clientWidth || 0;
+    const next = { gangs: measure('gangs'), buddies: measure('buddies') };
+    if (next.gangs && next.buddies && (Math.abs(next.gangs - widths.gangs) > 8 || Math.abs(next.buddies - widths.buddies) > 8)) {
+      Object.assign(widths, next);
+      return drawNow();
+    }
+    const kind = openKey?.startsWith('gang') || openKey === 'new:gang' ? 'gangs' : 'buddies';
+    const list = kind === 'gangs' ? gangs.items() : buddyItems();
+    const item = openKey && list.find((x) => x.key === openKey);
+    if (item && pulledOut(list, openKey, widths[kind] || estimate(kind))) {
+      pull.dataset.key = openKey;
+      pull.innerHTML = `<div class="scroll-pull-inner" role="list">${scrollHTML(item, true, { pulled: true })}</div>
+        <button class="btn btn--quiet scroll-pull-close" type="button" data-scroll-close>Roll it up</button>`;
+      if (!pull.open) pull.showModal();
+    } else if (pull.open) {
+      pull.dataset.key = '';
+      pull.close();
+    }
+  }
+
+  // Unroll (or roll up) a scroll where it stands: its paper comes out (a CSS transition on the
+  // sheet's width) while the scrolls after it slide to the end of the shelf (Flip).
+  let rolling = 0;
+  function toggleScroll(key) {
+    clearTimeout(rolling);
+    const next = openKey === key ? null : key;
+    if (pull.open && pull.dataset.key === openKey) { pull.dataset.key = ''; pull.close(); }
+    if (reducedMotion()) { openKey = next; return drawNow(); }
+    const others = (el) => [...view.querySelectorAll('.shelf [data-flip-id]')].filter((x) => x !== el);
+    const current = view.querySelector('.shelf .scroll.is-open');
+    if (current && !next) {
+      // Rolling up: the paper goes back in, the others slide back, then the shelf is redrawn.
+      const state = Flip.getState(others(current));
+      current.classList.remove('is-open');
+      Flip.from(state, { targets: others(current), duration: 0.5, ease: 'power2.inOut' });
+      rolling = setTimeout(() => { openKey = null; drawNow(); }, 520);
+      return;
+    }
+    openKey = next;
+    drawNow();
+    const el = view.querySelector('.shelf .scroll.is-open');
+    if (!el) return; // pulled out instead: the dialog unrolls it
+    el.classList.remove('is-open');
+    void el.offsetWidth; // start from rolled up, so the transition runs
+    const state = Flip.getState(others(el));
+    el.classList.add('is-open');
+    Flip.from(state, { targets: others(el), duration: 0.5, ease: 'power2.inOut' });
   }
 
   function cardsPanel() {
-    const link = fresh ? `${location.origin}${APP_PATH}#/flock/card/${fresh.token}` : '';
     const others = cards.length - (fresh ? 1 : 0);
-    if (!fresh && !cards.length) return '';
+    if (others <= 0) return '';
     return `<section class="panel" aria-labelledby="cards-h">
-      <div class="panel-head"><h2 id="cards-h">Cards handed over</h2><p>${plural(cards.length, 'open card')}</p></div>
-      ${fresh ? `<div class="fresh-card">
-        <label class="note" for="card-link">Your new card, good until ${dayMonth(fresh.until)}. It works once; this is the only time it's shown.</label>
-        <input id="card-link" class="card-link" readonly value="${esc(link)}" data-focus="card-link">
-        <div class="backup-actions">
-          <button class="btn" type="button" data-card-copy>Copy link</button>
-          ${navigator.share ? '<button class="btn btn--quiet" type="button" data-card-share>Share</button>' : ''}
-        </div></div>` : ''}
+      <div class="panel-head"><h2 id="cards-h">Cards handed over</h2><p>${plural(others, 'open card')}</p></div>
       ${others > 0 ? `<ul class="open-cards">${cards.filter((c) => !fresh || c.until !== fresh.until).map((c) => `<li><span>Good until ${dayMonth(c.until)}</span><button class="seg-link" type="button" data-card-back="${esc(c.hash)}">Take back</button></li>`).join('')}</ul>
         <p class="note">Older cards can't be shown again. Take one back if it went to the wrong place.</p>` : ''}
     </section>`;
@@ -308,24 +391,26 @@ export function createFlock({ view, store, getClient, toast, rerender, openAccou
   function clearCard() { writeCard(''); card = { token: '', peek: null, asked: false, level: 'doing', busy: false }; }
 
   // <details> forget being open when redrawn; remember it here. 'toggle' doesn't bubble.
-  view.addEventListener('toggle', (e) => {
+  const roots = [view, pull];
+  const on = (type, fn, capture) => roots.forEach((root) => root.addEventListener(type, fn, capture));
+  on('toggle', (e) => {
     const d = e.target;
     gangs.onToggle(d);
     if (d.matches?.('[data-share-open]')) { if (d.open) openShares.add(d.dataset.shareOpen); else openShares.delete(d.dataset.shareOpen); }
     if (d.matches?.('[data-change-open]')) changeOpen = d.open;
   }, true);
-  view.addEventListener('submit', (e) => {
+  on('submit', (e) => {
     if (gangs.onSubmit(e)) return;
     const form = e.target.closest('[data-tag-form]');
     if (!form) return;
     e.preventDefault();
     submitTag(form);
   });
-  view.addEventListener('input', (e) => {
+  on('input', (e) => {
     const form = e.target.closest('[data-tag-form]');
     if (form) { draft[e.target.name] = e.target.value; if (draft.error) { draft.error = ''; form.querySelector('.field-error').textContent = ''; } }
   });
-  view.addEventListener('change', (e) => {
+  on('change', (e) => {
     const t = e.target;
     if (gangs.onChange(t)) return;
     if (t.matches('[data-card-level]')) { card.level = LEVELS.includes(t.value) ? t.value : 'doing'; return; }
@@ -343,8 +428,11 @@ export function createFlock({ view, store, getClient, toast, rerender, openAccou
       return act((c) => saveSharing(c, account.id, b.id, b.myLevel, b.myHabits), () => publish());
     }
   });
-  view.addEventListener('click', (e) => {
+  on('click', (e) => {
     const t = e.target;
+    const roll = t.closest('[data-scroll]');
+    if (roll) return toggleScroll(roll.dataset.scroll);
+    if (t.closest('[data-scroll-close]')) return pull.close();
     if (gangs.onClick(t)) return;
     if (t.closest('[data-flock-signin]')) return openAccount();
     if (t.closest('[data-flock-retry]')) { failed = ''; rerender(); return load(); }

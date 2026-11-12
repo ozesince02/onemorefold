@@ -3,6 +3,17 @@
 What changed, for people using the app. Why it changed lives in [docs/decisions.md](docs/decisions.md).
 Dates are when the work landed.
 
+## 0.19.0 — 13 November 2026
+
+### Changed
+- **Flock is a room of shelves** (D-048).
+  - **The scrolls:** each gang and each buddy is a big rolled scroll standing on a wooden shelf,
+    a little crooked, with its name down the front and a seal saying how today stands.
+  - **Opening one:** tap it and it unrolls where it stands, pushing the others to the end of the
+    shelf.
+  - **No room?** It's pulled out and opened on its own.
+  - **Blank scrolls** at the end of each shelf start a gang or hand over your card.
+
 ## 0.18.0 — 13 November 2026
 
 ### Added

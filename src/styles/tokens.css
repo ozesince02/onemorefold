@@ -50,6 +50,11 @@
   --yamabuki: #E9B33F;
   --kraft: #C9A57A;
   --sakura: #E8C3BC;
+  /* Wood for Flock's shelves and the scrolls' knobs (D-048) */
+  --wood: #8B6B4A;
+  --wood-top: #A88560;
+  --wood-under: #6E5238;
+  --wood-knob: #5C4330;
 
   --shadow: 30 27 24;
   --line: rgb(var(--shadow) / .1);
@@ -93,6 +98,10 @@
   --yamabuki: #DEA63D;
   --kraft: #C49C6D;
   --sakura: #E2B9A5;
+  --wood: #8C6844;
+  --wood-top: #AA8357;
+  --wood-under: #6C4E33;
+  --wood-knob: #5A3F2A;
 
   --shadow: 52 36 18;
   --tape: rgb(214 186 132 / .7);
@@ -133,6 +142,10 @@
   --yamabuki: #C99D45;
   --kraft: #AE8F69;
   --sakura: #BE9B92;
+  --wood: #6B5440;
+  --wood-top: #846950;
+  --wood-under: #3B2E22;
+  --wood-knob: #8A6E52;
 
   --shadow: 0 0 0;
   --line: rgb(232 227 217 / .12);

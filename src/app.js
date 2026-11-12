@@ -675,7 +675,8 @@ const menu = createAccountMenu($('[data-account]'), { page: 'app', onChoose: cho
 
 // Flock (D-044): buddies, as name cards. A card handed over by link is picked up before anything draws.
 captureCard();
-const flock = createFlock({ view, store, getClient, toast, rerender: scheduleRender, openAccount: () => menu.open(), today });
+const flock = createFlock({ view, store, getClient, toast, rerender: scheduleRender, drawNow: () => render(), openAccount: () => menu.open(), today });
+window.addEventListener('resize', () => { if (route().name === 'flock') scheduleRender(); });
 flock.captureStart();
 wireCraneNotes(view);
 

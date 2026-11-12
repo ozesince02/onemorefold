@@ -139,8 +139,14 @@ Shadows are allowed **only** on paper lying on paper. Buttons and controls are f
   alternate a slight tilt.
 - **Flock panels:** both follow the same pattern.
   - **Head:** the heading, then the count and the crane note on the right, centred on one line.
-  - **Body:** the cards, sized to what they hold, then a dashed `--new` tile ("Hand over your
-    card", "Start a gang") that opens into its form.
+  - **Body:** a shelf of scrolls (D-048).
+- **Shelf and scroll** (`.shelf`, `.scroll`, `src/ui/shelf.js`, D-048):
+  - **The shelf:** a wooden plank (`--wood` tokens). Rolls stand on it with a steady tilt per item.
+  - **A roll:** knobs, round paper ends, a cord in the item's paper colour, a vertical name label
+    and a seal at the foot. Blank rolls (`.scroll--ghost`) are dashed.
+  - **Open:** the paper unrolls to the right with the item's band along its top, and an edge stick
+    on the right. The scrolls after it go to the shelf's end.
+  - **Pulled out:** when it doesn't fit, it opens in `.scroll-pull`, a modal dialog.
 - **Gang mark** (`.gang-mark`): a light outlined pill reading "gang", in the text's own colour,
   beside a gang habit's name. "gang" has descenders and no ascenders, so its label sits 2px higher
   than the box would put it.
