@@ -5,8 +5,8 @@
 import { esc } from '../lib/sanitize.js';
 import { monthKey, monthShort } from '../lib/dates.js';
 import { CADENCES, CADENCE_LABELS, WEEKDAY_SHORT, describe } from '../lib/schedule.js';
-import { gangStatus, stampRows, namesText, endFor, parseDay, dayKey, LENGTHS, GANG_SIZE, GANG_LIMIT, GANG_NAME_MAX } from '../lib/gangs.js';
-import { loadGangs, createGang, editGang, leaveGang, removeMember, createCard } from '../lib/buddies-api.js';
+import { gangStatus, stampRows, namesText, endFor, parseDay, dayKey, gangCranes, keepsakeOf, LENGTHS, GANG_SIZE, GANG_LIMIT, GANG_NAME_MAX } from '../lib/gangs.js';
+import { loadGangs, createGang, editGang, leaveGang, removeMember, createCard, loadKeepsakes, saveKeepsake } from '../lib/buddies-api.js';
 import { APP_PATH } from '../config.js';
 import { noteTrigger } from './note-trigger.js';
 import { craneMark } from './paper.js';
@@ -26,8 +26,16 @@ function crane(frac) {
     ${craneMark('var(--bg-3)', 'var(--bg-3)')}<span class="gang-crane-folded">${craneMark()}</span></span>`;
 }
 
-export function createGangs({ store, sb, toast, rerender, today }) {
+const UNIT_WORDS = { day: ['day', 'days'], week: ['week', 'weeks'], month: ['month', 'months'] };
+const unitText = (n, unit) => UNIT_WORDS[unit][n === 1 ? 0 : 1];
+// The seal of a tag: the code in a ring, fitted to its length (see .hanko in app.css).
+const seal = (code, extra = '') => `<span class="hanko${extra}" data-len="${String(code).length}" aria-hidden="true">${esc(code)}</span>`;
+const lengthOf = (a, b) => Math.round((Date.UTC(...ymd(b)) - Date.UTC(...ymd(a))) / 86400000) + 1;
+const ymd = (k) => { const { y, m, d } = parseDay(k); return [y, m - 1, d]; };
+
+export function createGangs({ store, sb, toast, rerender, today, userId }) {
   let gangs = [];
+  let keepsakes = [];
   let starting = false;
   let draft = null;
   let error = '';
@@ -50,7 +58,8 @@ export function createGangs({ store, sb, toast, rerender, today }) {
   };
 
   async function load() {
-    gangs = await loadGangs(await sb());
+    const c = await sb();
+    [gangs, keepsakes] = await Promise.all([loadGangs(c), loadKeepsakes(c)]);
     // A gang this device thinks a habit belongs to, but which no longer has you: unlink it here.
     const mine = new Set(gangs.map((g) => g.id));
     for (const [id, gang] of Object.entries(store.get().links || {})) if (!mine.has(gang)) store.linkChallenge(id, null);
@@ -114,8 +123,28 @@ export function createGangs({ store, sb, toast, rerender, today }) {
     </form>`;
   }
 
+  // When a gang ends: a certificate (a shojo), with the gang cranes everyone folded and each
+  // member's figures, to keep on your Year (D-047).
+  function certificate(g, i) {
+    const { cranes, periods, unit } = gangCranes(g, parseDay(g.ends));
+    const s = gangStatus(g, parseDay(g.ends));
+    const members = s.members.filter((x) => x.linked);
+    return `<article class="gang gang--done" aria-labelledby="gang-h-${i}">
+      <div class="certificate">
+        <p class="cert-kicker" aria-hidden="true">シュウリョウ</p>
+        <h3 id="gang-h-${i}">${esc(g.name)}</h3>
+        <p class="note">${sched(g)} · ${short(g.starts)} to ${short(g.ends)} · ${lengthOf(g.starts, g.ends)} days</p>
+        <p class="cert-cranes"><b>${cranes}</b><span>of ${periods} ${unitText(periods, unit)} everyone folded</span></p>
+        ${members.length ? `<ul class="cert-members">${members.map((x) => `<li>${seal(x.code)}<span class="cert-name">${esc(x.name)}</span><span class="cert-figure">${x.done} of ${x.due} due</span></li>`).join('')}</ul>` : ''}
+        <p class="note">Your habit stays in your tracker. Remove it on the Habits page whenever you're done with it.</p>
+        <div class="backup-actions"><button class="btn" type="button" data-gang-keep="${g.id}">Keep it on my Year</button><button class="btn btn--quiet" type="button" data-gang-again="${g.id}">Fold it again</button></div>
+      </div>
+    </article>`;
+  }
+
   function gangCard(g, i) {
     const s = gangStatus(g, today());
+    if (s.phase === 'over') return certificate(g, i);
     const me = g.members.find((x) => x.me);
     const owner = me?.owner;
     const linkedHere = Object.entries(store.get().links || {}).some(([, gang]) => gang === g.id);
@@ -222,7 +251,22 @@ export function createGangs({ store, sb, toast, rerender, today }) {
       const g = gangs.find((x) => !before.has(x.id));
       if (g) addHabit(g);
     },
-    reset() { gangs = []; starting = false; draft = null; error = ''; confirm = ''; open.clear(); for (const k of Object.keys(fresh)) delete fresh[k]; },
+    // The stamp book on the Year view: the gangs you kept that ended in `year` (D-047).
+    stampBook(year) {
+      const kept = keepsakes.filter((k) => k.ends.startsWith(`${year}-`));
+      if (!kept.length) return '';
+      return `<section class="panel span-12 stamp-book" aria-labelledby="book-h">
+        <div class="panel-head"><h2 id="book-h">Stamp book</h2><p>${plural(kept.length, 'gang')} finished in ${year}</p></div>
+        <div class="book-scroll"><ol class="book">${kept.map((k) => `<li class="book-page">
+          <h3>${esc(k.name)}</h3>
+          <p class="note">${short(k.starts)} to ${short(k.ends)}</p>
+          <div class="book-seals">${k.members.map((x) => seal(x.code)).join('')}</div>
+          <p class="book-cranes"><b>${k.cranes}</b> of ${k.periods} ${unitText(k.periods, k.unit)} everyone folded</p>
+          <ul class="visually-hidden">${k.members.map((x) => `<li>${esc(x.name)}: ${x.done} of ${x.due} due</li>`).join('')}</ul>
+        </li>`).join('')}</ol></div>
+      </section>`;
+    },
+    reset() { keepsakes = []; gangs = []; starting = false; draft = null; error = ''; confirm = ''; open.clear(); for (const k of Object.keys(fresh)) delete fresh[k]; },
     // "Fold it with friends" from the Habits page: the start form, filled in from that habit.
     startFrom(habitId) { starting = true; draft = blankDraft(habitId); error = ''; },
     onToggle(d) {
@@ -260,6 +304,27 @@ export function createGangs({ store, sb, toast, rerender, today }) {
       return true;
     },
     onClick(t) {
+      // A finished gang: keep its certificate on the Year, leave it, and maybe start it again.
+      const keep = t.closest('[data-gang-keep], [data-gang-again]');
+      if (keep) {
+        const again = keep.matches('[data-gang-again]');
+        const id = keep.dataset.gangKeep || keep.dataset.gangAgain;
+        const g = gangs.find((x) => x.id === id);
+        if (!g) return true;
+        const habit = Object.entries(store.get().links || {}).find(([, gang]) => gang === id)?.[0] || '';
+        const k = keepsakeOf(g);
+        act(async (c) => {
+          if (k.members.length) await saveKeepsake(c, userId(), k);
+          await leaveGang(c, id);
+          if (habit) store.linkChallenge(habit, null);
+          await load();
+          if (again) {
+            starting = true;
+            draft = { ...blankDraft(habit), name: g.name.slice(0, GANG_NAME_MAX), cadence: g.cadence, weekdays: g.weekdays || [1, 2, 3, 4, 5], timesPerWeek: g.timesPerWeek || 3 };
+          }
+        }, () => toast(again ? `${g.name} is in your stamp book. Here it is again: pick the dates, then hand out new cards.` : `${g.name} is in your stamp book, on the Year.`));
+        return true;
+      }
       if (t.closest('[data-gang-start]')) { starting = true; draft = blankDraft(); error = ''; rerender(); return true; }
       if (t.closest('[data-gang-cancel]')) { starting = false; draft = null; error = ''; rerender(); return true; }
       const add = t.closest('[data-gang-add]');

@@ -5,6 +5,13 @@ Dates are when the work landed.
 
 ## Unreleased
 
+### Added
+- **When a gang ends** (D-047):
+  - **A certificate:** its card turns into one, with the days everyone folded and each member's
+    seal and figures.
+  - **Keep it on your Year:** it goes into a new stamp book on the Year view, a page per gang.
+  - **Fold it again:** starts the same habit as a new gang, ready for new cards.
+
 ### Changed
 - The noren on the front page now announces Flock (buddies and gangs), linking straight to it,
   and takes turns with "free for everyone". The reminders notice has come down.

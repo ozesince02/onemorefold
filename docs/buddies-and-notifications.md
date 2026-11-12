@@ -223,6 +223,10 @@ Inspired by gamer tags (Valorant's Riot ID): a name and a short tag, joined by `
 hasn't folded, the stamp banner, members' figures, the owner's controls and leaving. Still to come:
 the closing card and Year keepsake, and gangs in the summaries.
 
+**Gang endings built 13 November 2026 (D-047):** a certificate when a gang ends, and a stamp book
+of finished gangs on the Year view. Still to come: gangs in the summaries, and a push when a gang's
+crane is done.
+
 One idea covers both: a buddy challenge is a challenge with two members, a group (gang) challenge
 has more.
 

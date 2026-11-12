@@ -131,6 +131,12 @@ Shadows are allowed **only** on paper lying on paper. Buttons and controls are f
   - **Layout:** today sits beside the banner when the sheet is wide (a container query), and above
     it when it's narrow.
   - **Who hasn't folded** is named in words, never in red.
+- **Certificate** (`.certificate`, D-047): a finished gang. A double shu frame on the sheet (no
+  band), シュウリョウ in shu above the name, the days everyone folded as one big shu number, and
+  members as seal, name and figures. The two buttons are centred.
+- **Stamp book** (`.stamp-book`, D-047): on the Year view, a goshuin-cho. Kraft covers hold sheet
+  pages (196px), one per finished gang, scrolling sideways when there are more than fit. Seals
+  alternate a slight tilt.
 - **Flock panels:** both follow the same pattern.
   - **Head:** the heading, then the count and the crane note on the right, centred on one line.
   - **Body:** the cards, sized to what they hold, then a dashed `--new` tile ("Hand over your

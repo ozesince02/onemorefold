@@ -104,6 +104,25 @@ export async function leaveGang(sb, id) {
   if (!ID.test(id)) return;
   check(await sb.rpc('leave_gang', { p_challenge: id }), "Couldn't leave just now. Try again.");
 }
+// Keepsakes of finished gangs (D-047): your own copy, kept on your Year.
+const UNITS = ['day', 'week', 'month'];
+export async function loadKeepsakes(sb) {
+  const rows = check(await sb.from('gang_keepsakes').select('challenge_id, name, cadence, starts, ends, cranes, periods, unit, members')
+    .order('ends', { ascending: true }), "Couldn't load your finished gangs.");
+  return (rows || []).filter((r) => ID.test(r.challenge_id) && DAY.test(r.starts) && DAY.test(r.ends) && UNITS.includes(r.unit) && Array.isArray(r.members))
+    .map((r) => ({
+      ...r,
+      name: String(r.name).slice(0, GANG_NAME_MAX),
+      cranes: Number(r.cranes) || 0,
+      periods: Number(r.periods) || 0,
+      members: r.members.filter((x) => typeof x?.name === 'string' && typeof x.code === 'string' && Number.isInteger(x.done) && Number.isInteger(x.due)).slice(0, 10),
+    }));
+}
+export async function saveKeepsake(sb, userId, keepsake) {
+  check(await sb.from('gang_keepsakes').upsert({ user_id: userId, ...keepsake }, { onConflict: 'user_id,challenge_id', ignoreDuplicates: true }),
+    "The gang couldn't be kept on your Year. Try again.");
+}
+
 export async function removeMember(sb, id, user) {
   if (!ID.test(id) || !ID.test(user)) return;
   check(await sb.rpc('remove_member', { p_challenge: id, p_user: user }), "Couldn't remove them just now. Try again.");

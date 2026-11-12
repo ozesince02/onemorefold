@@ -42,6 +42,8 @@ export function groupGangs(rows) {
       owner: r.owner === true,
       me: r.me === true,
       linked: r.linked === true,
+      // The day they joined (UTC is close enough for counting from when someone was in).
+      joined: typeof r.joined_at === 'string' && DAY.test(r.joined_at.slice(0, 10)) ? r.joined_at.slice(0, 10) : r.starts,
       days: new Set((r.days || []).filter((d) => DAY.test(d))),
     });
   }
@@ -148,6 +150,62 @@ export function stampRows(g, now, days = 7) {
 export function namesText(list) {
   const names = list.map((x) => x.name);
   return names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
+// Gang cranes (D-047): the days (or, for flexible schedules, the weeks or months) on which everyone
+// in the gang folded. Someone counts from the day they joined, and only with their habit linked.
+// Returns { cranes, periods, unit }: "11 of 30 days".
+export function gangCranes(g, now) {
+  const start = parseDay(g.starts);
+  const end = parseDay(g.ends);
+  if (before(now, start)) return { cranes: 0, periods: 0, unit: unitOf(habitFor(g, start.y, start.m)) };
+  const last = before(end, now) ? end : now;
+  const lastKey = dayKey(last);
+  const linked = g.members.filter((x) => x.linked);
+  const unit = unitOf(habitFor(g, start.y, start.m));
+  let cranes = 0, periods = 0;
+  const allIn = (from, to, target) => {
+    const active = linked.filter((x) => x.joined <= to);
+    if (!active.length) return false;
+    return active.every((x) => [...x.days].filter((k) => k >= from && k <= to).length >= target);
+  };
+  if (unit === 'day') {
+    for (let d = start, guard = 0; dayKey(d) <= lastKey && guard < 400; d = addDays(d, 1), guard++) {
+      if (!isDueDay(habitFor(g, d.y, d.m), d.y, d.m, d.d)) continue;
+      periods++;
+      if (allIn(dayKey(d), dayKey(d), 1)) cranes++;
+    }
+    return { cranes, periods, unit };
+  }
+  // Weeks (from the 1st, as the tracker counts them) or months, inside the gang's dates.
+  let { y, m } = start;
+  for (let guard = 0; guard < 14 && (y < last.y || (y === last.y && m <= last.m)); guard++) {
+    const h = habitFor(g, y, m);
+    const spans = unit === 'month' ? [{ from: h.start || 1, to: 31, target: 1 }] : habitWeeks(h, y, m);
+    for (const w of spans) {
+      const from = `${y}-${pad(m)}-${pad(w.from)}`;
+      const to = `${y}-${pad(m)}-${pad(w.to)}`;
+      if (from > lastKey || from < g.starts) continue;
+      periods++;
+      if (allIn(from, to < g.ends ? to : g.ends, w.target)) cranes++;
+    }
+    ({ y, m } = shiftMonth(y, m, 1));
+  }
+  return { cranes, periods, unit };
+}
+
+// A finished gang as a keepsake row for gang_keepsakes: the gang, its cranes, and everyone's
+// figures, in the order they joined (never ranked).
+export function keepsakeOf(g) {
+  const end = parseDay(g.ends);
+  const s = gangStatus(g, end);
+  const { cranes, periods, unit } = gangCranes(g, end);
+  return {
+    challenge_id: g.id, name: g.name, cadence: g.cadence, starts: g.starts, ends: g.ends,
+    cranes: Math.min(cranes, periods), periods, unit,
+    members: s.members.filter((x) => x.linked).slice(0, GANG_SIZE)
+      .map((x) => ({ name: x.name, code: x.code, done: Math.min(x.done, 999), due: Math.min(x.due, 999) })),
+  };
 }
 
 // A gang's dates for a person starting it today: a week, two weeks, 30 days, or to a chosen day.

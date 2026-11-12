@@ -55,7 +55,7 @@ export function createFlock({ view, store, getClient, toast, rerender, openAccou
 
   const sb = () => getClient();
   const signedIn = () => account.status === 'signed-in' && account.id;
-  const gangs = createGangs({ store, sb, toast, rerender, today });
+  const gangs = createGangs({ store, sb, toast, rerender, today, userId: () => account.id });
 
   async function load() {
     if (!signedIn()) return;
@@ -418,5 +418,5 @@ export function createFlock({ view, store, getClient, toast, rerender, openAccou
     return true;
   }
 
-  return { render, onAccount, refresh, captureStart, onStore: () => publish(5000), hasCard: () => Boolean(card.token || readCard()) };
+  return { render, onAccount, refresh, captureStart, stampBook: (year) => (signedIn() && loaded ? gangs.stampBook(year) : ''), onStore: () => publish(5000), hasCard: () => Boolean(card.token || readCard()) };
 }

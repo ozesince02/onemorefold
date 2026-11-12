@@ -343,6 +343,19 @@ person's rows directly:
   against its sender's membership only when it was made. Now leaving or being removed takes back
   your cards for that gang, and a card from someone no longer in it is gone. A test covers it.
 
+### 13 November 2026 — gang keepsakes (branch `feature/gangs-ending`)
+
+When a gang ends, each member can keep a copy of its result in their own rows (`gang_keepsakes`,
+D-047). This is the members' tags and figures, which they could already see.
+- **Access:** own rows only for reading, adding and putting away; no updates at all.
+- **Shape:** checked by the database. Each member is exactly `{name, code, done, due}`, with no
+  markup characters in a name, and a code as profiles keep them.
+- **Limit:** 100 a person.
+- **Shown in the page:** names, codes and the gang's name go through `esc()`. The rows are reshaped
+  and checked before use.
+- **Tests:** `check-schema.mjs` covers other people's rows, visitors, the shape, no updates and
+  account deletion. `check-gangs.mjs` covers the gang crane count and the keepsake.
+
 ### Accepted risks (owner's decision, 24 Oct 2026, D-016)
 
 - The repository is public and holds the owner's January–October 2026 habit log (names, times,

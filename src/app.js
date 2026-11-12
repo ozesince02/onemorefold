@@ -482,6 +482,7 @@ function yearView(y) {
       <section class="panel span-3"><p class="big">${percent(sum.average)}</p><p class="label">average month, ${of[lead]}</p></section>
       <section class="panel span-3"><p class="big">${sum.best ? monthShort(sum.best.m) : '—'}</p><p class="label">best month${sum.best ? `, ${percent(sum.bestRate)} ${of[lead]}` : ''}</p></section>
       <section class="panel span-3"><p class="big">${perfect}</p><p class="label">perfect days</p></section>
+      ${flock.stampBook(y)}
       <div class="span-12"><h2 class="visually-hidden">Months</h2><div class="months">${cards}</div></div>
     </div>`;
 }
