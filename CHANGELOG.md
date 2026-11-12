@@ -3,6 +3,13 @@
 What changed, for people using the app. Why it changed lives in [docs/decisions.md](docs/decisions.md).
 Dates are when the work landed.
 
+## 0.19.1 — 13 November 2026
+
+### Fixed
+- **Changing a habit's time works again.** The time picker closed after every single step (the
+  hour, the minutes or AM/PM), so moving a habit from 3 PM to 7 AM took many tries. The time, the
+  goal, the start day and "times a week" now save once, when you leave the field or press Enter.
+
 ## 0.19.0 — 13 November 2026
 
 ### Changed
