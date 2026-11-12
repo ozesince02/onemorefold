@@ -479,15 +479,11 @@ td.is-today .cell:not([aria-pressed="true"]) { outline: 2px solid var(--ink); ou
 .gang-days { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px 12px; grid-column: 1 / -1; }
 .gang-days label { display: flex; align-items: center; gap: 4px; font-size: 14px; }
 .gang {
-  container-type: inline-size; display: grid; gap: 16px; align-content: start; padding: 16px 20px 18px;
+  display: grid; gap: 16px; align-content: start; padding: 16px 20px 18px;
   background: var(--sheet); border-top: 8px solid var(--ai); filter: var(--lift);
 }
 .gang > header { display: grid; gap: 2px; }
-@container (min-width: 720px) {
-  .gang-body { display: grid; grid-template-columns: minmax(180px, 220px) 1fr; gap: 28px; align-items: start; }
-  .gang-body .gang-today { flex-direction: column; align-items: flex-start; gap: 10px; }
-  .gang-body .gang-crane { width: 120px; }
-}
+
 .gang h3 { font-family: var(--display); font-weight: 400; font-size: 22px; line-height: 1.15; overflow-wrap: anywhere; }
 .gang-today { display: flex; align-items: center; gap: 16px; }
 .gang-today-main { font-weight: 900; font-size: 17px; }
@@ -545,14 +541,16 @@ td.is-today .cell:not([aria-pressed="true"]) { outline: 2px solid var(--ink); ou
    Each gang and each buddy is a big rolled scroll standing upright on a wooden shelf, a little
    crooked. Unrolled, its roll stays standing at the left and the paper comes out to the right, the
    other scrolls sliding to the end of the shelf. */
+/* One height for every shelf and scroll, open or rolled. */
+.shelves, .scroll-pull { --roll-h: 270px; }
 .shelves { display: grid; gap: 22px; }
-.shelf { display: flex; align-items: flex-end; gap: 12px; padding: 8px 16px 0; min-height: 210px; }
+.shelf { display: flex; align-items: flex-end; gap: 12px; padding: 8px 16px 0; height: calc(var(--roll-h) + 8px); }
 .shelf-plank { height: 14px; background: var(--wood); border-top: 3px solid var(--wood-top); box-shadow: 0 6px 0 var(--wood-under); border-radius: 2px; }
-.scroll { position: relative; display: flex; align-items: stretch; flex: none; min-height: 196px; transform: rotate(var(--tilt)); transform-origin: bottom center; transition: transform .35s ease; }
+.scroll { position: relative; display: flex; align-items: stretch; flex: none; height: var(--roll-h); min-width: 0; transform: rotate(var(--tilt)); transform-origin: bottom center; transition: transform .35s ease; }
 .scroll.is-open { transform: none; }
 .scroll.is-open + .scroll { margin-left: auto; }
 .scroll-roll {
-  all: unset; box-sizing: border-box; position: relative; flex: none; width: 46px; min-height: 196px; cursor: pointer;
+  all: unset; box-sizing: border-box; position: relative; flex: none; width: 46px; height: 100%; cursor: pointer;
   transition: width .5s ease;
 }
 .scroll-roll:focus-visible { outline: 3px solid var(--link); outline-offset: 4px; }
@@ -579,9 +577,14 @@ td.is-today .cell:not([aria-pressed="true"]) { outline: 2px solid var(--ink); ou
 .scroll-seal[data-len="4"] { font-size: 7px; }
 .scroll-seal[data-len="5"] { font-size: 6px; }
 .scroll.is-open .scroll-label, .scroll.is-open .scroll-seal, .scroll.is-open .scroll-tie { opacity: 0; transition: opacity .2s; }
-.scroll-sheet { width: 0; overflow: hidden; margin: 14px 0; background: var(--sheet); border-top: 4px solid var(--c); transition: width .5s ease; }
-.scroll.is-open .scroll-sheet { width: var(--w); }
-.scroll-body { width: var(--w); padding: 16px 18px 18px; box-sizing: border-box; }
+/* The paper: as wide as its sections, up to the room the shelf has; past that it scrolls sideways. */
+.scroll-sheet { max-width: 0; overflow-x: auto; overflow-y: hidden; margin: 14px 0; background: var(--sheet); border-top: 4px solid var(--c); transition: max-width .5s ease; }
+.scroll.is-open .scroll-sheet { max-width: var(--max); }
+.scroll-body { width: max-content; height: 100%; padding: 14px 18px; box-sizing: border-box; }
+.sheet-cols { display: flex; align-items: stretch; height: 100%; }
+.sheet-col { flex: none; width: 236px; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+.sheet-col + .sheet-col { margin-left: 22px; padding-left: 22px; border-left: 2px dashed var(--bg-3); }
+.sheet-col--fit { width: auto; }
 .scroll-edge { width: 0; margin: 8px 0; background: var(--wood-knob); border-radius: 4px; transition: width .5s ease; }
 .scroll.is-open .scroll-edge { width: 9px; }
 .scroll-title { font-family: var(--display); font-weight: 400; font-size: 20px; line-height: 1.15; margin-bottom: 4px; }
@@ -589,20 +592,30 @@ td.is-today .cell:not([aria-pressed="true"]) { outline: 2px solid var(--ink); ou
 .scroll--ghost .scroll-cyl { background: var(--bg); border-style: dashed; }
 .scroll--ghost .scroll-label { background: var(--bg); color: var(--ink-2); }
 /* What a gang or a buddy shows, now that the scroll is its paper */
-.scroll-body .gang, .scroll-body .meishi { padding: 0; background: none; border: 0; filter: none; rotate: 0deg; }
-.scroll-body .meishi header { margin-bottom: 8px; }
-.scroll-body .gang-form { margin-top: 12px; }
+.scroll-body .gang, .scroll-body .meishi { padding: 0; background: none; border: 0; filter: none; rotate: 0deg; display: flex; gap: 0; }
+.scroll-body .meishi header { margin-bottom: 4px; }
+.scroll-body .gang-form { display: flex; gap: 0; margin-left: 22px; padding-left: 22px; border-left: 2px dashed var(--bg-3); }
+.scroll-body .gang-form .sheet-col { gap: 10px; }
+.scroll-body .gang-today { flex-direction: column; align-items: flex-start; gap: 8px; }
+.scroll-body .meishi-share, .scroll-body .gang-settings { margin: 0; padding-top: 0; border-top: 0; }
+.scroll-body .meishi-habits { gap: 6px; }
+.scroll-body .gang-crane { width: 90px; }
+.scroll-body .stamps th, .scroll-body .stamps td { padding: 3px; }
+.scroll-body .stamp { width: 16px; height: 16px; }
+.scroll-body .certificate { padding: 12px 14px; }
+.scroll-body .certificate .sheet-col { justify-content: center; align-items: center; text-align: center; }
+.scroll-body .cert-members { margin: 0; padding: 0 0 0 22px; border-top: 0; max-width: none; width: 260px; justify-content: center; }
+.scroll-body .cert-cranes b { font-size: 38px; }
 /* Pulled out of the shelf: the scroll unrolls on its own, over the page. */
-.scroll-pull { padding: 28px 20px 20px; border: 0; background: transparent; max-width: min(96vw, 760px); max-height: 92vh; overflow: auto; }
+.scroll-pull { padding: 28px 20px 20px; border: 0; background: transparent; max-width: 96vw; max-height: 92vh; overflow: visible; }
 .scroll-pull::backdrop { background: var(--scrim); }
 .scroll-pull:focus { outline: none; }
 .scroll-pull-inner { display: flex; justify-content: center; }
 .scroll-pull .scroll { transform: none; }
 /* On its own the paper is as wide as the screen allows, roll and edge included. */
-.scroll-pull .scroll.is-open .scroll-sheet { width: min(var(--w), calc(100vw - 110px)); animation: unroll .5s ease; }
-.scroll-pull .scroll.is-open .scroll-body { width: min(var(--w), calc(100vw - 110px)); }
+.scroll-pull .scroll.is-open .scroll-sheet { max-width: calc(96vw - 120px); animation: unroll .5s ease; }
 .scroll-pull-close { display: block; margin: 16px auto 0; }
-@keyframes unroll { from { width: 0; } }
+@keyframes unroll { from { max-width: 0; } }
 @media (prefers-reduced-motion: reduce) {
   .scroll, .scroll-roll, .scroll-sheet, .scroll-edge { transition: none; }
   .scroll-pull .scroll-sheet { animation: none; }
