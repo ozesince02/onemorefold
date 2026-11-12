@@ -3,6 +3,14 @@
 What changed, for people using the app. Why it changed lives in [docs/decisions.md](docs/decisions.md).
 Dates are when the work landed.
 
+## 0.20.1 — 13 November 2026
+
+### Fixed
+- **Goals, start days and times save every change.** Clicking the arrows on one habit's goal and
+  then another's lost the second change: saving the first redrew the page under the second. Every
+  step now saves at once, and the page waits to redraw until you've left those fields, so the
+  time picker also stays open while you set it.
+
 ## 0.20.0 — 13 November 2026
 
 ### Added
