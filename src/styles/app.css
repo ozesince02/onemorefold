@@ -506,6 +506,30 @@ td.is-today .cell:not([aria-pressed="true"]) { outline: 2px solid var(--ink); ou
 .gang-edit label { display: grid; gap: 4px; font-size: 13px; font-weight: 700; color: var(--ink-2); }
 .gang-edit .note { flex-basis: 100%; }
 .gang-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 14px; }
+/* A finished gang (D-047): a certificate (shojo) with a double red frame, to keep on the Year */
+.gang--done { border-top: 0; padding: 14px; }
+.certificate { display: grid; gap: 10px; justify-items: center; text-align: center; padding: 18px 16px; border: 3px double var(--accent); }
+.cert-kicker { font-family: var(--display); font-size: 13px; letter-spacing: .3em; color: var(--accent-ink); }
+.certificate h3 { font-family: var(--display); font-weight: 400; font-size: 24px; line-height: 1.15; overflow-wrap: anywhere; }
+.cert-cranes b { display: block; font-family: var(--display); font-weight: 400; font-size: 44px; line-height: 1; color: var(--accent-ink); }
+.cert-cranes span { display: block; margin-top: 4px; font-size: 14px; color: var(--ink-2); }
+.cert-members { list-style: none; margin: 4px auto 0; padding: 14px 0 0; display: grid; gap: 8px; justify-self: stretch; width: 100%; max-width: 300px; border-top: 2px dashed var(--bg-3); }
+.cert-members li { display: grid; grid-template-columns: 46px 1fr auto; align-items: center; gap: 10px; text-align: left; }
+.cert-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cert-figure { color: var(--ink-2); font-size: 14px; font-variant-numeric: tabular-nums; }
+.certificate .note { max-width: 40ch; }
+.certificate .backup-actions { justify-content: center; margin-top: 4px; }
+
+/* The stamp book on the Year (D-047): a goshuin-cho, kraft covers, a page per finished gang */
+.book-scroll { overflow-x: auto; }
+.book { list-style: none; margin: 0; padding: 10px; display: flex; gap: 3px; width: max-content; background: var(--kraft); filter: var(--lift); }
+.book-page { width: 196px; display: grid; gap: 8px; justify-items: center; align-content: start; padding: 16px 14px 18px; background: var(--sheet); text-align: center; }
+.book-page h3 { font-family: var(--display); font-weight: 400; font-size: 18px; line-height: 1.15; overflow-wrap: anywhere; }
+.book-seals { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 4px 0; }
+.book-seals .hanko:nth-child(odd) { rotate: 6deg; }
+.book-cranes { font-size: 13px; color: var(--ink-2); }
+.book-cranes b { display: block; font-family: var(--display); font-weight: 400; font-size: 30px; line-height: 1.05; color: var(--accent-ink); }
+
 .gang-mark {
   display: inline-flex; align-items: center; height: 17px; padding: 0 7px 2px; vertical-align: 1px;
   border: 1.5px solid currentColor; border-radius: 999px; font-size: 11px; font-weight: 700; line-height: 1; letter-spacing: .02em;
