@@ -7,6 +7,16 @@
 
 export const PATCHES = [
   {
+    version: '0.20.2',
+    date: '2026-11-13',
+    title: 'Scrolls that know their place',
+    sticker: 'ヨコ',
+    notes: [
+      ['The shelves stay put.', "Opening a scroll used to make it, and the whole shelf, grow taller. Now everything keeps its height and the scroll unrolls sideways, the way scrolls have done for a thousand years."],
+      ['Room for more.', 'A busy gang or buddy lays out side by side on the paper, and scrolls sideways if there is even more.'],
+    ],
+  },
+  {
     version: '0.20.1',
     date: '2026-11-13',
     title: 'Every click counts',

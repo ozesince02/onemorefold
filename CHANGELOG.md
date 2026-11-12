@@ -3,7 +3,7 @@
 What changed, for people using the app. Why it changed lives in [docs/decisions.md](docs/decisions.md).
 Dates are when the work landed.
 
-## Unreleased
+## 0.20.2 — 13 November 2026
 
 ### Fixed
 - **Flock's shelves keep their height.** Opening a scroll no longer stretches its roll and the
