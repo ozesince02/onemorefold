@@ -241,6 +241,16 @@ export const store = {
     save();
   },
 
+  // A new order for the month's habits (D-049): `ids` must be exactly the month's habits.
+  reorderHabits(key, ids) {
+    const month = this.ensureMonth(key);
+    if (!Array.isArray(ids) || ids.length !== month.habits.length) return;
+    const byId = new Map(month.habits.map((h) => [h.id, h]));
+    if (new Set(ids).size !== ids.length || !ids.every((id) => byId.has(id))) return;
+    month.habits = ids.map((id) => byId.get(id));
+    save();
+  },
+
   moveHabit(key, id, delta) {
     const list = this.ensureMonth(key).habits;
     const i = list.findIndex((h) => h.id === id);

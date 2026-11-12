@@ -12,6 +12,7 @@ import { CRANE_GOAL, CRANE_GOAL_TEXT } from './config.js';
 import { createCraneStage } from './three/stage.js';
 import { startAuth, getClient } from './lib/auth.js';
 import { createAccountMenu } from './ui/account-menu.js';
+import { wireReorder } from './ui/reorder.js';
 import { createFlock, captureCard } from './ui/flock.js';
 import { wireCraneNotes } from './ui/note-trigger.js';
 import { watchTheme } from './lib/theme.js';
@@ -38,7 +39,7 @@ const icon = {
 $$('[data-mark]').forEach((el) => { el.innerHTML = craneMark(); });
 
 let now = today();
-let ui = { swatchFor: null, pct: null, protection: null, account: { status: 'loading' }, sync: { state: 'off', pending: 0 }, push: 'unknown' };
+let ui = { swatchFor: null, reorder: false, pct: null, protection: null, account: { status: 'loading' }, sync: { state: 'off', pending: 0 }, push: 'unknown' };
 let stage = null;
 let lastProgress = -1;
 
@@ -592,8 +593,6 @@ function habitsView(key) {
       <label class="third">Goal (${{ week: 'weeks', month: 'months' }[unitOfHabit(h)] || 'days'})<input data-edit="${h.id}" data-field="goal" type="number" min="0" max="${days}" value="${h.goal}"></label>
       <label class="third">From day<input data-edit="${h.id}" data-field="start" type="number" min="1" max="${days}" value="${h.start || 1}"></label>
       <div class="row-actions">
-        <button class="icon-btn" type="button" data-move="${h.id}:-1" aria-label="Move ${esc(h.name)} up" ${i === 0 ? 'disabled' : ''}>${icon.up}</button>
-        <button class="icon-btn" type="button" data-move="${h.id}:1" aria-label="Move ${esc(h.name)} down" ${i === month.habits.length - 1 ? 'disabled' : ''}>${icon.down}</button>
         <button class="icon-btn danger" type="button" data-remove="${h.id}">Remove</button>
       </div>
       ${scheduleEditor(h)}
@@ -611,6 +610,8 @@ function habitsView(key) {
     <div class="board">
       <section class="span-8" aria-labelledby="list-h">
         <h2 id="list-h" class="visually-hidden">This month's habits</h2>
+        ${ui.reorder && month.habits.length > 1 ? reorderPanel(key, month) : `
+        ${month.habits.length > 1 ? '<div class="editor-tools"><button class="btn btn--quiet" type="button" data-reorder data-focus="reorder">Reorder habits</button></div>' : ''}
         <div class="editor">${rows || '<p class="note">No habits yet. Add the first one below.</p>'}</div>
         <form class="panel panel--washi add-form" data-add style="margin-top:24px">
           <label>New habit<input name="name" required placeholder="Stretch for ten minutes"></label>
@@ -619,7 +620,7 @@ function habitsView(key) {
           <label>Goal (days)<input name="goal" type="number" min="0" max="${days}" value="20"></label>
           <label>From day<input name="start" type="number" min="1" max="${days}" value="${key === monthKey(now.y, now.m) ? now.d : 1}"></label>
           <button class="btn" type="submit">Add habit</button>
-        </form>
+        </form>`}
       </section>
       <div class="span-4 side-stack">
         ${percentagesPanel()}
@@ -653,6 +654,24 @@ function habitsView(key) {
     </div>`;
 }
 
+// Reordering (D-049): only the names, in order, to drag into place. The arrows do the same from a
+// keyboard; focus stays on the arrow you pressed.
+function reorderPanel(key, month) {
+  const { m } = parseKey(key);
+  const n = month.habits.length;
+  return `<section class="panel reorder" aria-labelledby="reorder-h">
+    <div class="panel-head"><h2 id="reorder-h">Reorder habits</h2><button class="btn" type="button" data-reorder-done data-focus="reorder-done">Done</button></div>
+    <p class="note">Drag a habit by its grip, or use the arrows. The order is the one ${monthName(m)} shows.</p>
+    <ol class="reorder-list" aria-label="Habits in order">${month.habits.map((h, i) => `<li class="reorder-item" data-id="${h.id}" style="--c:${store.color(h.id)}">
+      <span class="reorder-grip" aria-hidden="true"><svg viewBox="0 0 12 18"><circle cx="3" cy="3" r="1.6"/><circle cx="9" cy="3" r="1.6"/><circle cx="3" cy="9" r="1.6"/><circle cx="9" cy="9" r="1.6"/><circle cx="3" cy="15" r="1.6"/><circle cx="9" cy="15" r="1.6"/></svg></span>
+      <i aria-hidden="true"></i><span class="reorder-name">${esc(h.name)}</span>
+      <span class="reorder-moves">
+        <button class="icon-btn" type="button" data-move="${h.id}:-1" data-focus="move:${h.id}:-1" aria-label="Move ${esc(h.name)} up" ${i === 0 ? 'disabled' : ''}>${icon.up}</button>
+        <button class="icon-btn" type="button" data-move="${h.id}:1" data-focus="move:${h.id}:1" aria-label="Move ${esc(h.name)} down" ${i === n - 1 ? 'disabled' : ''}>${icon.down}</button>
+      </span></li>`).join('')}</ol>
+  </section>`;
+}
+
 // ---------- Sync (D-020) ----------
 const sync = createSync({
   store,
@@ -679,6 +698,7 @@ const flock = createFlock({ view, store, getClient, toast, rerender: scheduleRen
 window.addEventListener('resize', () => { if (route().name === 'flock') scheduleRender(); });
 flock.captureStart();
 wireCraneNotes(view);
+wireReorder(view, (ids) => store.reorderHabits(route().key, ids));
 
 // First sign-in on a browser that already has folds, when the account has some too.
 function chooseBar() {
@@ -1001,6 +1021,8 @@ view.addEventListener('click', (e) => {
     return import('./ui/crane-story.js').then((m) => m.openCraneStory({ page: 'app' }))
       .catch(() => toast("The story couldn't load. Check your connection and try again."));
   }
+  if (e.target.closest('[data-reorder]')) { ui.reorder = true; return render(); }
+  if (e.target.closest('[data-reorder-done]')) { ui.reorder = false; toast('Order saved.'); return render(); }
   const sw = e.target.closest('[data-swatch]');
   if (sw) { ui.swatchFor = ui.swatchFor === sw.dataset.swatch ? null : sw.dataset.swatch; return render(); }
   const col = e.target.closest('[data-color]');
@@ -1194,6 +1216,7 @@ window.addEventListener('hashchange', () => {
   captureCard();
   flock.captureStart();
   ui.swatchFor = null;
+  ui.reorder = false;
   if (route().name === 'flock') flock.refresh();
   render();
   view.focus({ preventScroll: true });
