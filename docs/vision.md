@@ -11,6 +11,21 @@ missed day as a fall to get up from, never a failure.
 
 ## Ideas
 
+### A home page for someone deciding, and the story on its own page (13 Nov 2026, from the owner)
+The landing page tells the owner's story more than it shows the product. Today it runs: the hero
+and "try it with these six", "Seven falls, then a spreadsheet", "The whole sheet, minus the
+formulas", the owner's year so far, "Things a spreadsheet can't do", then the close. Someone who
+has never heard of One More Fold has to read a life story before learning what it does for them.
+- **Rebuild the home page for a potential user:** what it is in one line, what a day with it
+  looks like (tick, crane, month grid), what's in it (reminders with the app closed, summaries,
+  Flock: buddies and gangs, the year and the wish), that it's free with no ads or tracking, and
+  how to start. Real screens, in the paper style.
+- **Keep the story separate:** move "Seven falls, then a spreadsheet" and the owner's year to their
+  own page (an "Our story" page, linked from the home page and the footer), alongside the cranes
+  story scroll (D-023). The landing's real figures (D-016) can go with it.
+- **To settle when we start:** what stays above the fold; whether "try it with these six" (the
+  demo) stays on the home page; the new page's name and address.
+
 ### A month you fold into an origami (23 Oct 2026, from the owner)
 As you tick habits through the month, a 3D origami model assembles in the Month view: each tick a
 fold, each week a stage, the full model at month end. How full it is shows how the month went.
