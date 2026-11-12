@@ -960,6 +960,8 @@ Accepted · 13 Nov 2026 · builds on D-046
   - **Shape:** checked by the database.
   - **Changes:** none. A keepsake is kept as it was; you can only put one away.
   - **Limit:** 100 a person.
+  - **Like a group photo:** a keepsake keeps the other members' tags and figures from that gang,
+    even after they leave or delete their account. The Privacy page says so (review of 13 Nov).
 - **Not built:** gangs in the daily summary, and a push when a gang's crane is done. The open
   question (should a summary name who hasn't folded?) still stands.
 - **Release order:** run `20261113120000_gang_keepsakes.sql` before the site that uses it ships.
