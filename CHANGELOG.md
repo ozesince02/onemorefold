@@ -3,6 +3,13 @@
 What changed, for people using the app. Why it changed lives in [docs/decisions.md](docs/decisions.md).
 Dates are when the work landed.
 
+## 0.20.2 — 13 November 2026
+
+### Fixed
+- **Flock's shelves keep their height.** Opening a scroll no longer stretches its roll and the
+  whole shelf. The paper lays its contents out sideways, in sections side by side, and when there's
+  more than the shelf has room for, it scrolls sideways inside, the scroll unrolling further.
+
 ## 0.20.1 — 13 November 2026
 
 ### Fixed
