@@ -7,6 +7,17 @@
 
 export const PATCHES = [
   {
+    version: '0.20',
+    date: '2026-11-13',
+    title: 'Habits, in the order you like',
+    sticker: 'ナラベル',
+    notes: [
+      ['Reorder habits.', "A new button on the Habits page tidies everything away except the names. Drag them into the order you want, then tap Done. No more pressing up seventeen times."],
+      ['Phone-friendly.', 'On a phone, drag by the little grip on the left, so the list still scrolls when you swipe.'],
+      ['Arrows too.', 'Prefer a keyboard? The arrows beside each name move it one place at a time.'],
+    ],
+  },
+  {
     version: '0.19.1',
     date: '2026-11-13',
     title: 'Time travel, fixed',
