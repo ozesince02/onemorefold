@@ -1073,11 +1073,27 @@ view.addEventListener('click', (e) => {
   if (choose) return chooseSync(choose.dataset.syncChoose);
 });
 
+// Time and number fields fire `change` at every step of their picker or spinner (the hour, then
+// the minutes, then AM/PM). Saving there redraws the editor, which closes the picker after one step,
+// so these save when you leave the field or press Enter instead.
+const savesOnLeave = (el) => el.type === 'time' || el.type === 'number';
+function saveEdit(input) {
+  if (input.dataset.field === 'name' && !input.value.trim()) { input.value = input.defaultValue; return; }
+  if (input.value.trim() === input.defaultValue) return; // unchanged: no save, no redraw
+  store.updateHabit(route().key, input.dataset.edit, { [input.dataset.field]: input.value.trim() });
+}
+view.addEventListener('focusout', (e) => {
+  const input = e.target.closest?.('[data-edit]');
+  if (input && savesOnLeave(input)) saveEdit(input);
+});
+view.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.matches?.('[data-edit]') && savesOnLeave(e.target)) saveEdit(e.target);
+});
+
 view.addEventListener('change', (e) => {
   const input = e.target.closest('[data-edit]');
   if (input) {
-    if (input.dataset.field === 'name' && !input.value.trim()) { input.value = input.defaultValue; return; }
-    store.updateHabit(route().key, input.dataset.edit, { [input.dataset.field]: input.value.trim() });
+    if (!savesOnLeave(input)) saveEdit(input);
     return;
   }
   if (e.target.matches('[data-private]')) {

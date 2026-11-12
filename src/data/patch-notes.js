@@ -7,6 +7,15 @@
 
 export const PATCHES = [
   {
+    version: '0.19.1',
+    date: '2026-11-13',
+    title: 'Time travel, fixed',
+    sticker: 'ナオッタ',
+    notes: [
+      ['Setting a time works again.', "The time picker on the Habits page closed after every single click, so 3 PM to 7 AM took a small expedition. Now it stays open until you're done, and saves when you leave the field."],
+    ],
+  },
+  {
     version: '0.19',
     date: '2026-11-13',
     title: 'Scrolls on the shelf',
