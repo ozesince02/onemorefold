@@ -3,7 +3,7 @@
 What changed, for people using the app. Why it changed lives in [docs/decisions.md](docs/decisions.md).
 Dates are when the work landed.
 
-## Unreleased
+## 0.18.0 — 13 November 2026
 
 ### Added
 - **When a gang ends** (D-047):

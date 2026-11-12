@@ -43,6 +43,16 @@ week, a month or a year, each ticking their own. Design:
 [buddies-and-notifications.md](buddies-and-notifications.md).
 - Later still: a family circle with one shared thousand-crane wish.
 
+### Gangs in the summaries, and a push when the crane is done (13 Nov 2026, from the owner; later)
+The two parts of gangs left for later (D-046, D-047):
+- **Gangs in the daily summary:** a line per gang, such as "Run club: 4 of 5 folded today". Still
+  to decide: should it name who hasn't folded yet, as the gang in Flock does, or give only the
+  count? The suggestion was the count only: something you go and look at in Flock shouldn't
+  arrive uninvited at night.
+- **A push when the gang's crane is done:** "Run club: everyone folded today", off by default like
+  the summaries. The send-reminders job would need the gang's ticks, through a function like
+  `my_gangs()` but for the service role.
+
 ### Nudges between buddies (27 Oct 2026, from the owner; not in the first version)
 A buddy could send a nudge when a habit isn't ticked yet. Left out for now: the other person may
 already be doing it and just hasn't ticked, and repeated nudges would irritate more than help.
