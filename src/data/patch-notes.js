@@ -7,6 +7,18 @@
 
 export const PATCHES = [
   {
+    version: '0.21',
+    date: '2026-11-17',
+    title: 'Roll the dice (there are no dice)',
+    sticker: 'スゴロク',
+    notes: [
+      ['Flock, tidied.', 'Your gangs and your buddies are two simple lists now, each one telling you at a glance how it stands. The shelves have gone back to the furniture shop.'],
+      ['Every gang gets a board game.', 'Open a gang and its whole run is a paper sugoroku board you walk together, a square a day. Everyone folds and the square gets a crane. Nobody is ever sent back to the start, because this is a nice board game.'],
+      ['Every buddy gets a page,', 'with how they are doing and, if they say so, their month the way their own Month tab shows it. Look, but no ticking for them.'],
+      ['Day by day, only if you say so.', 'At "My habits" you can now let a buddy see which days you ticked the habits you picked. It stays off until you turn it on.'],
+    ],
+  },
+  {
     version: '0.20.2',
     date: '2026-11-13',
     title: 'Scrolls that know their place',
