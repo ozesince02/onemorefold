@@ -283,10 +283,13 @@ export const PATCHES = [
   },
 ];
 
-// What's being folded next (see docs/buddies-and-notifications.md). Promises, not dates.
+// What's being folded next (see docs/vision.md). Promises, not dates. Keep it in step with the
+// "Next on the folding table" card on the landing page (index.html).
 export const NEXT = [
-  'Buddies, with user tags like oze#1000',
-  'Buddy and gang challenges: one habit, up to ten people',
+  "Your gangs in the daily summary, and a ping when the gang's crane is done",
+  "Tick styles: a target, a seal or a daruma's eye instead of a box",
+  'A year in folds: your recap, card by card',
+  'Android and iOS apps',
 ];
 
 export const LATEST = PATCHES[0].version;
