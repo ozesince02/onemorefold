@@ -68,6 +68,16 @@ The two parts of gangs left for later (D-046, D-047):
   the summaries. The send-reminders job would need the gang's ticks, through a function like
   `my_gangs()` but for the service role.
 
+### Release emails, for people who ask for them (17 Nov 2026, from the owner; later)
+An email to existing users when something new ships. The privacy page says email is used only to
+sign in, so it has to be asked for first:
+- **An opt-in:** "Email me when something new ships" in the account chit, off by default, stored
+  with the account. Announced through the noren and the patch notes.
+- **Sending:** Claude drafts each email from the patch notes; the owner sends it by hand to those
+  who said yes, with an unsubscribe link in every email.
+- **To settle when we start:** which email service (it holds the addresses, so the privacy page
+  names it), and the sending domain's SPF and DKIM so it doesn't land in spam.
+
 ### Nudges between buddies (27 Oct 2026, from the owner; not in the first version)
 A buddy could send a nudge when a habit isn't ticked yet. Left out for now: the other person may
 already be doing it and just hasn't ticked, and repeated nudges would irritate more than help.
