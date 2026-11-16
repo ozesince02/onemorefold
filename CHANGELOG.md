@@ -3,7 +3,7 @@
 What changed, for people using the app. Why it changed lives in [docs/decisions.md](docs/decisions.md).
 Dates are when the work landed.
 
-## Unreleased
+## 0.21.1 — 17 November 2026
 
 ### Fixed
 - **"Next on the folding table" is up to date.** The landing page and the patch notes no longer
