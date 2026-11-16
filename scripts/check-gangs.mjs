@@ -102,4 +102,38 @@ assert.deepEqual(mergeStates({ months: {}, colors: {}, years: {}, links: { run: 
   assert.ok(k.members.every((x) => x.done <= x.due), 'done never above due');
 }
 
+// The sugoroku board (D-050): a square per day, rest days included; the piece on today's square.
+{
+  const { boardOf, gangCranes } = await import('../src/lib/gangs.js');
+  const day = (d) => `2026-11-${String(d).padStart(2, '0')}`;
+  const [g] = groupGangs([
+    row(1, 'oze', [day(1), day(2), day(3), day(5)]),
+    row(2, 'Asha', [day(1), day(2), day(3), day(5)]),
+    row(3, 'Ravi', [day(5)], { joined_at: '2026-11-04T09:00:00Z' }),
+    row(4, 'jo', [], { linked: false }),
+  ]);
+  let b = boardOf(g, { y: 2026, m: 11, d: 5 });
+  assert.equal(b.squares.length, 30, 'a square for every day of a 30-day gang');
+  assert.deepEqual(b.squares.slice(0, 6).map((x) => x.state), ['all', 'all', 'all', 'none', 'all', 'future'],
+    'everyone in by then folded days 1-3 and 5; nobody day 4; the rest to come');
+  assert.deepEqual(b.squares[3].active, [0, 1, 2], 'Ravi counts from the day he joined; jo, unlinked, never');
+  assert.deepEqual(b.squares[0].active, [0, 1], 'and not before');
+  assert.equal(b.at, 4, "the piece stands on today's square");
+  assert.ok(b.squares[4].now && !b.squares[3].now, 'and only today is now');
+  const cr = gangCranes(g, { y: 2026, m: 11, d: 5 }).cranes;
+  assert.equal(b.squares.filter((x) => x.state === 'all').length, cr, 'the board agrees with the gang cranes');
+  assert.equal(boardOf(g, { y: 2026, m: 10, d: 30 }).at, -1, 'before it starts, the piece waits at the start');
+  assert.equal(boardOf(g, { y: 2026, m: 12, d: 3 }).at, 30, 'after it ends, the piece is home');
+  b = boardOf(g, { y: 2026, m: 11, d: 6 });
+  assert.equal(b.squares[5].state, 'none', 'today, before anyone folds: none yet, and still now');
+  const [gym] = groupGangs([row(1, 'oze', [day(2), day(4)], { cadence: 'weekdays', weekdays: [1, 3, 5] })]);
+  b = boardOf(gym, { y: 2026, m: 11, d: 6 });
+  assert.deepEqual(b.squares.slice(0, 6).map((x) => x.state), ['rest', 'all', 'rest', 'all', 'rest', 'none'], 'rest days are squares too, so a row is a week');
+  const [swim] = groupGangs([row(1, 'oze', [day(1), day(3), day(6), day(9)], { cadence: 'weekly' }), row(2, 'Asha', [day(2)], { cadence: 'weekly' })]);
+  b = boardOf(swim, { y: 2026, m: 11, d: 14 });
+  assert.equal(b.unit, 'week', 'a weekly gang walks a square a week');
+  assert.deepEqual(b.squares.slice(0, 3).map((x) => x.state), ['all', 'some', 'future'], 'weeks from the 1st: both folded the first; only oze so far this week, the second');
+  assert.equal(b.at, 1, 'the piece on this week');
+}
+
 console.log('gangs: all checks pass');

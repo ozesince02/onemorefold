@@ -168,13 +168,15 @@ share my habits with you while you share only your consistency with me.
 | --- | --- |
 | **Just buddies** | That you're buddies, and your name. Nothing about your habits. |
 | **How I'm doing** | Your consistency: due habits done over the last 7 and 30 days ("18 of 24 due, last 7 days"), whether it's rising or falling, and your longest current run. No habit names. |
-| **My habits** | The above, plus the habits you pick for that buddy, each with its name and progress this month ("German: 12 of 18 due"). |
+| **My habits** | The above, plus the habits you pick for that buddy, each with its name and progress this month ("German: 12 of 18 due"); and, if you say yes, the days you ticked them, as your Month tab shows them (D-051). |
 
 - **Private habits:** any habit can be marked private, and is then never shown to any buddy at any
   level, nor counted by name.
 - **Default for a new buddy:** "How I'm doing". You can change it at any time, for each buddy.
 - **Tags, not emails:** buddies see your user tag (below). Your email is never shown to them.
-- **Figures, not grids:** buddies see totals and trends, never day-by-day grids, times or wishes.
+- **Figures, not grids** (changed 17 Nov 2026, D-051): buddies see totals and trends, never times
+  or wishes. At "My habits", someone may now also show the days they ticked the habits they picked,
+  as a separate yes that starts off for everyone who chose "My habits" before.
   This changes an earlier rule ("misses are never shown to buddies", [data-storage.md](data-storage.md)):
   the owner wants a buddy to notice when someone is struggling, so consistency is shown, but only as
   a total over days, never as a list of the days that were missed.

@@ -1,18 +1,18 @@
-// Gangs in Flock (D-044, D-046): a habit taken on together. Each gang shows today's crane, folded
-// one fold per member and naming who hasn't folded yet, a banner of the last week's hanko stamps,
-// and each member's figures so far. All of it comes from my_gangs(), which returns only members'
-// ticks on the gang's habit; names from other accounts are escaped with esc().
+// Gangs in Flock (D-044, D-046, D-050): a habit taken on together. Flock lists them; each has its
+// own page with the sugoroku board the gang walks, today's gang crane (folded one fold per member,
+// naming who hasn't folded yet) and each member's figures so far. All of it comes from my_gangs(),
+// which returns only members' ticks on the gang's habit; names from other accounts are escaped
+// with esc().
 import { esc } from '../lib/sanitize.js';
 import { monthKey, monthShort } from '../lib/dates.js';
 import { CADENCES, CADENCE_LABELS, WEEKDAY_SHORT, describe } from '../lib/schedule.js';
-import { gangStatus, stampRows, namesText, endFor, parseDay, dayKey, gangCranes, keepsakeOf, LENGTHS, GANG_SIZE, GANG_LIMIT, GANG_NAME_MAX } from '../lib/gangs.js';
+import { gangStatus, namesText, endFor, parseDay, dayKey, gangCranes, keepsakeOf, boardOf, LENGTHS, GANG_SIZE, GANG_LIMIT, GANG_NAME_MAX } from '../lib/gangs.js';
 import { loadGangs, createGang, editGang, leaveGang, removeMember, createCard, loadKeepsakes, saveKeepsake } from '../lib/buddies-api.js';
 import { APP_PATH } from '../config.js';
 import { noteTrigger } from './note-trigger.js';
-import { shelvesHTML } from './shelf.js';
 import { craneMark } from './paper.js';
+import { boardHTML } from './sugoroku.js';
 
-const NARROW = new Intl.DateTimeFormat('en-GB', { weekday: 'narrow' });
 const short = (key) => { const { m, d } = parseDay(key); return `${d} ${monthShort(m)}`; };
 const dayMonth = (ms) => { const d = new Date(ms); return `${d.getDate()} ${monthShort(d.getMonth() + 1)}`; };
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -34,16 +34,17 @@ const seal = (code, extra = '') => `<span class="hanko${extra}" data-len="${Stri
 const lengthOf = (a, b) => Math.round((Date.UTC(...ymd(b)) - Date.UTC(...ymd(a))) / 86400000) + 1;
 const ymd = (k) => { const { y, m, d } = parseDay(k); return [y, m - 1, d]; };
 
-const GANG_PAPERS = ['ai', 'matcha', 'yamabuki', 'sakura', 'sora', 'kraft'];
+export const GANG_PAPERS = ['ai', 'matcha', 'yamabuki', 'sakura', 'sora', 'kraft'];
+const go = (hash) => { location.hash = hash; };
+export const CHEVRON = '<svg class="flock-row-go" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+export const BACK = '<a class="back-link" href="#/flock"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Flock</a>';
 
-export function createGangs({ store, sb, toast, rerender, today, userId, setOpen }) {
+export function createGangs({ store, sb, toast, rerender, today, userId }) {
   let gangs = [];
   let keepsakes = [];
-  let starting = false;
   let draft = null;
   let error = '';
   const fresh = {};             // gang id -> the card just made for it
-  const open = new Set();       // gangs whose settings are open
   let confirm = '';             // 'leave:<gang>' or 'remove:<gang>:<user>'
 
   const todayKey = () => dayKey(today());
@@ -85,41 +86,101 @@ export function createGangs({ store, sb, toast, rerender, today, userId, setOpen
   }
 
   // ---------- Views ----------
-  // What a gang's roll says at its foot: how today stands, in a few characters.
-  function sealOf(g) {
+  // A gang in the Flock list: how it stands, at a glance.
+  function row(g, i) {
     const s = gangStatus(g, today());
-    if (s.phase === 'soon') return 'soon';
-    if (s.phase === 'over') return 'done';
-    if (!s.due) return 'rest';
-    return `${s.folded.length}/${s.folded.length + s.waiting.length}`;
+    const total = s.folded.length + s.waiting.length;
+    let side;
+    if (s.phase === 'soon') side = `<b>Starts ${short(g.starts)}</b><small>${plural(g.members.length, 'member')} so far</small>`;
+    else if (s.phase === 'over') { const c = gangCranes(g, parseDay(g.ends)); side = `<b>Finished</b><small>${c.cranes} of ${c.periods} gang cranes</small>`; }
+    else if (!s.due) side = '<b>Rest day</b><small>nothing to fold</small>';
+    else side = `<b>${s.folded.length} of ${total}</b><small>folded ${{ day: 'today', week: 'this week', month: 'this month' }[s.period]}</small>`;
+    const frac = s.phase === 'on' && s.due && total ? s.folded.length / total : s.phase === 'over' ? 1 : 0;
+    const when = s.phase === 'on' ? `day ${s.day} of ${s.length}` : `${short(g.starts)} to ${short(g.ends)}`;
+    return `<li><a class="flock-row" href="#/flock/gang/${g.id}" style="--c:var(--${GANG_PAPERS[i % GANG_PAPERS.length]})">
+      <span class="flock-row-mark">${crane(frac)}</span>
+      <span class="flock-row-main"><b>${esc(g.name)}</b><small>${sched(g)} · ${when}</small></span>
+      <span class="flock-row-side">${side}</span>${CHEVRON}</a></li>`;
   }
 
-  // The scrolls on the Gangs shelf (D-048): one per gang, then a blank one that unrolls into the
-  // start form.
-  function items() {
+  // The Gangs list: every gang, then "Start a gang".
+  function list() {
+    const full = gangs.length >= GANG_LIMIT;
+    const end = full
+      ? `<p class="flock-row flock-row--new"><span class="flock-row-main"><small>You're in ${GANG_LIMIT} gangs, the most there can be.</small></span></p>`
+      : `<a class="flock-row flock-row--new" href="#/flock/gang/new"><span class="flock-row-mark flock-row-plus" aria-hidden="true">+</span>
+          <span class="flock-row-main"><b>Start a gang</b><small>${gangs.length ? 'Another habit, another gang.' : 'A habit you take on together, each ticking your own.'}</small></span>${CHEVRON}</a>`;
+    return `<section class="panel span-6 flock-gangs" aria-labelledby="gangs-h">
+      <div class="panel-head"><h2 id="gangs-h">Gangs</h2><div class="flock-head-side"><p>${gangs.length ? plural(gangs.length, 'gang') : 'None yet'}</p>${noteTrigger('gangs', 'Why gangs?')}</div></div>
+      <ul class="flock-list">${gangs.map(row).join('')}<li>${end}</li></ul>
+    </section>`;
+  }
+
+  // Starting a gang, on its own page.
+  function startPage() {
+    if (!draft) draft = blankDraft();
     const habits = store.view(monthKey(today().y, today().m)).habits;
     const full = gangs.length >= GANG_LIMIT;
-    if (starting && !draft) draft = blankDraft();
-    const list = gangs.map((g, i) => ({
-      key: `gang:${g.id}`, name: g.name, seal: sealOf(g), paper: GANG_PAPERS[i % GANG_PAPERS.length],
-      sheet: gangCard(g, i),
-    }));
-    list.push({
-      key: 'new:gang', name: 'New gang', seal: '+', paper: 'kraft', ghost: true,
-      sheet: full ? `<div class="sheet-cols"><div class="sheet-col"><p class="note">You're in ${GANG_LIMIT} gangs, the most there can be.</p></div></div>`
-        : `<div class="sheet-cols"><div class="sheet-col"><h3 class="scroll-title">Start a gang</h3>
-          <p class="note">${gangs.length ? 'Another habit, another gang.' : "Some habits are easier with company. Each of you ticks your own; you see each other's ticks on that habit, and nothing else."}</p></div>
-          ${starting ? startForm(habits) : ''}</div>`,
-    });
-    return list;
+    return `<div class="title-row flock-page-title">${BACK}<h1>Start a gang</h1>
+      <p class="finding">Some habits are easier with company. Each of you ticks your own; you see each other's ticks on that habit, and nothing else.</p></div>
+      <div class="board"><section class="panel span-8" aria-label="The gang's habit">${full ? `<p class="note">You're in ${GANG_LIMIT} gangs, the most there can be.</p>` : startForm(habits)}</section></div>`;
   }
 
-  function render({ openKey = null, width = 800 } = {}) {
-    starting = openKey === 'new:gang';
-    if (!starting) { draft = null; error = ''; }
-    return `<section class="panel span-12 flock-gangs" aria-labelledby="gangs-h">
-      <div class="panel-head"><h2 id="gangs-h">Gangs</h2><div class="flock-head-side"><p>${gangs.length ? plural(gangs.length, 'gang') : 'None yet'}</p>${noteTrigger('gangs', 'Why gangs?')}</div></div>
-      ${shelvesHTML(items(), { open: openKey, width, label: 'Your gangs' })}
+  // A gang's own page: the board, today, the members, and its settings.
+  function page(id) {
+    const i = gangs.findIndex((x) => x.id === id);
+    if (i < 0) {
+      return `<div class="title-row flock-page-title">${BACK}<h1>Not your gang</h1>
+        <p class="finding">This gang isn't one of yours any more. It may have ended, or you left it.</p></div>`;
+    }
+    const g = gangs[i];
+    const s = gangStatus(g, today());
+    const me = g.members.find((x) => x.me);
+    const linkedHere = Object.entries(store.get().links || {}).some(([, gang]) => gang === g.id);
+    const cr = gangCranes(g, s.phase === 'over' ? parseDay(g.ends) : today());
+    return `<div class="title-row flock-page-title">${BACK}<h1>${esc(g.name)}</h1>
+      <p class="finding">${sched(g)} · ${short(g.starts)} to ${short(g.ends)}${s.phase === 'on' ? ` · day ${s.day} of ${s.length}` : ''} · ${plural(g.members.length, 'member')}</p></div>
+      ${me && !me.linked && !linkedHere && s.phase !== 'over' ? `<p class="gang-unlinked">${esc(g.name)} isn't in your tracker yet. <button class="btn btn--quiet" type="button" data-gang-add="${g.id}">Add it to my habits</button></p>` : ''}
+      <div class="board gang-page${s.phase === 'over' ? ' is-over' : ''}">
+        <div class="span-8 side-stack">
+          ${s.phase === 'over' ? `<section class="panel gang-cert-panel" aria-label="Finished">${certificate(g, i)}</section>` : ''}
+          <section class="panel sugoroku-panel" aria-labelledby="board-h">
+            <div class="panel-head"><h2 id="board-h">The board</h2><p>${cr.periods ? `${cr.cranes} of ${cr.periods} ${unitText(cr.periods, cr.unit)} so far, everyone folded` : 'The gang sets off soon'}</p></div>
+            ${boardHTML(g, boardOf(g, today()))}
+          </section>
+          ${settingsPanel(g, i, s)}
+        </div>
+        <div class="span-4 side-stack">
+          ${s.phase === 'over' ? '' : todayPanel(g, s)}
+          ${membersPanel(s)}
+        </div>
+      </div>`;
+  }
+
+  function todayPanel(g, s) {
+    const total = s.folded.length + s.waiting.length;
+    const unit = { day: 'today', week: 'this week', month: 'this month' }[s.period];
+    let text;
+    if (s.phase === 'soon') text = `<p class="gang-today-main">Starts ${short(g.starts)}</p><p class="note">Hand out cards while you wait.</p>`;
+    else if (!s.due) text = '<p class="gang-today-main">A rest day</p><p class="note">Nothing to fold today.</p>';
+    else {
+      text = `<p class="gang-today-main">${s.folded.length} of ${total} folded ${unit}</p>
+        <p class="note">${s.waiting.length === 0 && total
+    ? (total > 1 ? `Everyone folded ${unit}. The gang's crane is done.` : `Folded ${unit}.`)
+    : `Still to fold ${unit}: ${esc(namesText(s.waiting))}.`}</p>`;
+    }
+    const frac = s.phase === 'on' && s.due && total ? s.folded.length / total : 0;
+    return `<section class="panel gang-crane-panel" aria-labelledby="gt-h"><div class="panel-head"><h2 id="gt-h">The gang's crane</h2></div>
+      <div class="gang-today">${crane(frac)}<div>${text}</div></div></section>`;
+  }
+
+  function membersPanel(s) {
+    const now = s.phase === 'on' && s.due;
+    return `<section class="panel gang-members-panel" aria-labelledby="gm-h"><div class="panel-head"><h2 id="gm-h">The gang</h2><p>in the order they joined</p></div>
+      <ul class="gang-members">${s.members.map((x) => `<li>${seal(x.code)}
+        <span class="gang-member-name">${esc(x.name)}${x.me && x.owner ? ' <em>you, running it</em>' : x.me ? ' <em>you</em>' : x.owner ? ' <em>runs it</em>' : ''}</span>
+        ${now && x.linked ? `<span class="gang-member-now${x.doneNow ? ' is-done' : ''}">${x.doneNow ? 'Folded' : 'Not yet'}</span>` : ''}
+        <span class="gang-member-figure">${!x.linked ? 'No habit for it yet' : s.phase === 'soon' ? 'Ready to start' : `${x.done} of ${x.due} due${runText(x.run)}`}</span></li>`).join('')}</ul>
     </section>`;
   }
 
@@ -128,28 +189,23 @@ export function createGangs({ store, sb, toast, rerender, today, userId, setOpen
     const days = d.cadence === 'weekdays'
       ? `<fieldset class="gang-days"><legend class="note">On these days</legend>${WEEKDAY_SHORT.map((w, i) => `<label><input type="checkbox" data-gang-wd="${i + 1}" ${d.weekdays.includes(i + 1) ? 'checked' : ''}> ${w}</label>`).join('')}</fieldset>` : '';
     const times = d.cadence === 'times_per_week'
-      ? `<label>Times a week<input type="number" min="1" max="7" name="times" data-focus="gang-times" value="${d.timesPerWeek}"></label>` : '';
+      ? `<label>Times a week<input type="number" min="1" max="7" name="times" data-focus="gang-times" value="${esc(d.timesPerWeek)}"></label>` : '';
     const max = endFor(todayKey(), 32);
     const ends = endFor(d.starts, Number(d.length));
-    return `<form class="gang-form sheet-cols" data-gang-form novalidate>
-      <div class="sheet-col">
-        <label>The habit, together<input name="name" maxlength="${GANG_NAME_MAX}" data-focus="gang-name" value="${esc(d.name)}" placeholder="Run 5 km" required></label>
-        <label>Repeats<select name="cadence" data-focus="gang-cadence">${CADENCES.map((c) => `<option value="${c}" ${c === d.cadence ? 'selected' : ''}>${CADENCE_LABELS[c]}</option>`).join('')}</select></label>
-        ${times}${days}
-      </div>
-      <div class="sheet-col">
-        <label>Starts<input type="date" name="starts" data-focus="gang-starts" min="${todayKey()}" max="${max}" value="${d.starts}"></label>
-        <label>For<select name="length" data-focus="gang-length">${LENGTHS.map(([n, label]) => `<option value="${n}" ${n === d.length ? 'selected' : ''}>${label}</option>`).join('')}</select></label>
-        <label>In your tracker<select name="habit" data-focus="gang-habit">
-          <option value="">A new habit with this name</option>
-          ${habits.filter((h) => !store.challengeOf(h.id)).map((h) => `<option value="${esc(h.id)}" ${h.id === d.habit ? 'selected' : ''}>${esc(h.name)}, which I have already</option>`).join('')}
-        </select></label>
-      </div>
-      <div class="sheet-col">
-        <p class="note">Until ${short(ends)}. Once it starts, the schedule stays as it is, so nobody's progress gets rewritten.</p>
-        <p class="field-error" role="alert">${esc(error)}</p>
-        <div class="backup-actions"><button class="btn" type="submit">Start the gang</button><button class="seg-link" type="button" data-gang-cancel>Not now</button></div>
-      </div>
+    return `<form class="gang-form" data-gang-form novalidate>
+      <label class="wide">The habit, together<input name="name" maxlength="${GANG_NAME_MAX}" data-focus="gang-name" value="${esc(d.name)}" placeholder="Run 5 km" required></label>
+      <label>Repeats<select name="cadence" data-focus="gang-cadence">${CADENCES.map((c) => `<option value="${c}" ${c === d.cadence ? 'selected' : ''}>${CADENCE_LABELS[c]}</option>`).join('')}</select></label>
+      ${times}
+      <label>Starts<input type="date" name="starts" data-focus="gang-starts" min="${todayKey()}" max="${max}" value="${esc(d.starts)}"></label>
+      <label>For<select name="length" data-focus="gang-length">${LENGTHS.map(([n, label]) => `<option value="${n}" ${n === d.length ? 'selected' : ''}>${label}</option>`).join('')}</select></label>
+      ${days}
+      <label class="wide">In your tracker<select name="habit" data-focus="gang-habit">
+        <option value="">A new habit with this name</option>
+        ${habits.filter((h) => !store.challengeOf(h.id)).map((h) => `<option value="${esc(h.id)}" ${h.id === d.habit ? 'selected' : ''}>${esc(h.name)}, which I have already</option>`).join('')}
+      </select></label>
+      <p class="note wide">Until ${short(ends)}. Once it starts, the schedule stays as it is, so nobody's progress gets rewritten.</p>
+      <p class="field-error wide" role="alert">${esc(error)}</p>
+      <div class="backup-actions wide"><button class="btn" type="submit">Start the gang</button><button class="seg-link" type="button" data-gang-cancel>Not now</button></div>
     </form>`;
   }
 
@@ -159,54 +215,25 @@ export function createGangs({ store, sb, toast, rerender, today, userId, setOpen
     const { cranes, periods, unit } = gangCranes(g, parseDay(g.ends));
     const s = gangStatus(g, parseDay(g.ends));
     const members = s.members.filter((x) => x.linked);
-    return `<article class="gang gang--done" aria-labelledby="gang-h-${i}">
-      <div class="certificate sheet-cols"><div class="sheet-col cert-head">
+    return `<article class="gang--done" aria-labelledby="gang-h-${i}">
+      <div class="certificate"><div class="cert-head">
         <p class="cert-kicker" aria-hidden="true">シュウリョウ</p>
         <h3 id="gang-h-${i}">${esc(g.name)}</h3>
         <p class="note">${sched(g)} · ${short(g.starts)} to ${short(g.ends)} · ${lengthOf(g.starts, g.ends)} days</p>
         <p class="cert-cranes"><b>${cranes}</b><span>of ${periods} ${unitText(periods, unit)} everyone folded</span></p></div>
-        ${members.length ? `<ul class="sheet-col cert-members">${members.map((x) => `<li>${seal(x.code)}<span class="cert-name">${esc(x.name)}</span><span class="cert-figure">${x.done} of ${x.due} due</span></li>`).join('')}</ul>` : ''}
-        <div class="sheet-col cert-foot"><p class="note">Your habit stays in your tracker. Remove it on the Habits page whenever you're done with it.</p>
+        ${members.length ? `<ul class="cert-members">${members.map((x) => `<li>${seal(x.code)}<span class="cert-name">${esc(x.name)}</span><span class="cert-figure">${x.done} of ${x.due} due</span></li>`).join('')}</ul>` : ''}
+        <div class="cert-foot"><p class="note">Your habit stays in your tracker. Remove it on the Habits page whenever you're done with it.</p>
         <div class="backup-actions"><button class="btn" type="button" data-gang-keep="${g.id}">Keep it on my Year</button><button class="btn btn--quiet" type="button" data-gang-again="${g.id}">Fold it again</button></div></div>
       </div>
     </article>`;
   }
 
-  function gangCard(g, i) {
-    const s = gangStatus(g, today());
-    if (s.phase === 'over') return certificate(g, i);
+  function settingsPanel(g, i, s) {
     const me = g.members.find((x) => x.me);
     const owner = me?.owner;
-    const linkedHere = Object.entries(store.get().links || {}).some(([, gang]) => gang === g.id);
-    const total = s.folded.length + s.waiting.length;
-    let todayText;
-    if (s.phase === 'soon') todayText = `<p class="gang-today-main">Starts ${short(g.starts)}</p><p class="note">${plural(g.members.length, 'member')} so far. Hand out the card while you wait.</p>`;
-    else if (s.phase === 'over') todayText = `<p class="gang-today-main">Finished on ${short(g.ends)}</p><p class="note">${g.members.length > 1 ? 'Everyone\'s figures stay below.' : 'Your figures stay below.'}</p>`;
-    else if (!s.due) todayText = '<p class="gang-today-main">A rest day</p><p class="note">Nothing to fold today.</p>';
-    else {
-      const unit = { day: 'today', week: 'this week', month: 'this month' }[s.period];
-      todayText = `<p class="gang-today-main">${s.folded.length} of ${total} folded ${unit}</p>
-        <p class="note">${s.waiting.length === 0 && total
-    ? (total > 1 ? `Everyone folded ${unit}. The gang's crane is done.` : `Folded ${unit}.`)
-    : `Still to fold ${unit}: ${esc(namesText(s.waiting))}.`}</p>`;
-    }
-    const frac = s.phase === 'on' && s.due && total ? s.folded.length / total : s.phase === 'over' ? 1 : 0;
-    const stamps = stampRows(g, today());
-    const banner = stamps.length ? `<div class="gang-banner">
-      <div class="nobori" aria-hidden="true"><span>ガ</span><span>ン</span><span>バ</span><span>レ</span></div>
-      <div class="stamps-scroll"><table class="stamps"><caption class="visually-hidden">Who folded, the last ${plural(stamps.length, 'day')}</caption>
-        <thead><tr><th scope="col"><span class="visually-hidden">Member</span></th>${stamps.map((r) => `<th scope="col" title="${short(r.key)}">${NARROW.format(new Date(r.day.y, r.day.m - 1, r.day.d))}<small>${r.day.d}</small></th>`).join('')}<th scope="col">So far</th></tr></thead>
-        <tbody>${s.members.map((mem, k) => `<tr>
-          <th scope="row"><span class="stamp-name">${esc(mem.name)}${mem.owner ? ' <em>runs it</em>' : ''}</span></th>
-          ${stamps.map((r) => `<td>${r.rest ? '<i class="stamp stamp--rest" title="Rest day"></i>' : r.stamped[k] ? `<i class="stamp stamp--on" title="Folded on ${short(r.key)}"></i>` : `<i class="stamp" title="Not folded on ${short(r.key)}"></i>`}</td>`).join('')}
-          <td class="stamp-sum">${mem.linked ? `${mem.done} of ${mem.due} due${runText(mem.run)}` : 'No habit for it yet'}</td>
-        </tr>`).join('')}</tbody>
-      </table></div></div>` : '';
-
     const card = fresh[g.id];
     const link = card ? `${location.origin}${APP_PATH}#/flock/card/${card.token}` : '';
-    const settings = `<details class="gang-settings" data-gang-open="${g.id}" ${open.has(g.id) || confirm.includes(g.id) ? 'open' : ''}>
-      <summary>Invite, change or leave</summary>
+    return `<section class="panel gang-settings" aria-labelledby="gs-h"><div class="panel-head"><h2 id="gs-h">Invite, change or leave</h2></div>
       ${s.phase !== 'over' && g.members.length < GANG_SIZE ? (card
     ? `<label class="note" for="gang-link-${i}">A card for ${esc(g.name)}, good until ${dayMonth(card.until)}. It works once; this is the only time it's shown.</label>
           <input id="gang-link-${i}" class="card-link" readonly value="${esc(link)}" data-focus="gang-link-${g.id}">
@@ -226,15 +253,7 @@ export function createGangs({ store, sb, toast, rerender, today, userId, setOpen
     ? `<p class="gang-confirm">Leave ${esc(g.name)}? Your habit and its ticks stay in your tracker; the gang stops seeing them.${owner && g.members.length > 1 ? ' Whoever has been in longest will run it.' : ''}${g.members.length === 1 ? ' You\'re the last one, so the gang ends.' : ''}
           <button class="btn" type="button" data-gang-leave-yes="${g.id}">Leave</button> <button class="seg-link" type="button" data-gang-confirm-no>Stay</button></p>`
     : `<button class="seg-link gang-leave" type="button" data-gang-leave="${g.id}">Leave the gang</button>`}
-    </details>`;
-
-    return `<article class="gang sheet-cols" aria-labelledby="gang-h-${i}"><div class="sheet-col">
-      <header><h3 id="gang-h-${i}">${esc(g.name)}</h3><p class="note">${sched(g)} · ${short(g.starts)} to ${short(g.ends)}${s.phase === 'on' ? ` · day ${s.day} of ${s.length}` : ''} · ${plural(g.members.length, 'member')}</p></header>
-      ${me && !me.linked && !linkedHere && s.phase !== 'over' ? `<p class="gang-unlinked">${esc(g.name)} isn't in your tracker yet. <button class="btn btn--quiet" type="button" data-gang-add="${g.id}">Add it to my habits</button></p>` : ''}
-      <div class="gang-today">${crane(frac)}<div>${todayText}</div></div></div>
-      ${banner ? `<div class="sheet-col sheet-col--fit">${banner}</div>` : ''}
-      <div class="sheet-col">${settings}</div>
-    </article>`;
+    </section>`;
   }
 
   // ---------- Actions ----------
@@ -266,22 +285,23 @@ export function createGangs({ store, sb, toast, rerender, today, userId, setOpen
       g.id = await createGang(c, g);
       addHabit(g, habit);
       await reload(c);
-      starting = false; draft = null; error = '';
-      open.add(g.id);
-      setOpen(`gang:${g.id}`);
+      draft = null; error = '';
+      go(`#/flock/gang/${g.id}`);
     }, () => toast(`${g.name} has started. Make a card to invite your gang.`));
   }
 
   return {
-    render,
+    list,
+    page,
+    startPage,
     load,
     addHabit,
-    // Just joined through a card: put the new gang's habit in the tracker.
+    // Just joined through a card: put the new gang's habit in the tracker, and open its page.
     async joined() {
       const before = new Set(gangs.map((g) => g.id));
       await load();
       const g = gangs.find((x) => !before.has(x.id));
-      if (g) addHabit(g);
+      if (g) { addHabit(g); go(`#/flock/gang/${g.id}`); }
     },
     // The stamp book on the Year view: the gangs you kept that ended in `year` (D-047).
     stampBook(year) {
@@ -298,13 +318,9 @@ export function createGangs({ store, sb, toast, rerender, today, userId, setOpen
         </li>`).join('')}</ol></div>
       </section>`;
     },
-    reset() { keepsakes = []; gangs = []; starting = false; draft = null; error = ''; confirm = ''; open.clear(); for (const k of Object.keys(fresh)) delete fresh[k]; },
+    reset() { keepsakes = []; gangs = []; draft = null; error = ''; confirm = ''; for (const k of Object.keys(fresh)) delete fresh[k]; },
     // "Fold it with friends" from the Habits page: the start form, filled in from that habit.
-    items,
-    startFrom(habitId) { starting = true; draft = blankDraft(habitId); error = ''; setOpen('new:gang'); },
-    onToggle(d) {
-      if (d.matches?.('[data-gang-open]')) { if (d.open) open.add(d.dataset.gangOpen); else open.delete(d.dataset.gangOpen); }
-    },
+    startFrom(habitId) { draft = blankDraft(habitId); error = ''; },
     onSubmit(e) {
       const form = e.target.closest('[data-gang-form]');
       if (form) { e.preventDefault(); submitStart(form); return true; }
@@ -333,7 +349,7 @@ export function createGangs({ store, sb, toast, rerender, today, userId, setOpen
         if (h) draft = { ...draft, name: h.name.slice(0, GANG_NAME_MAX), cadence: h.cadence || 'daily', weekdays: h.weekdays?.length ? [...h.weekdays] : draft.weekdays, timesPerWeek: h.timesPerWeek || draft.timesPerWeek };
       }
       if (form.times) draft.timesPerWeek = Number(form.times.value) || draft.timesPerWeek;
-      if (['cadence', 'habit'].includes(t.name)) rerender();
+      if (['cadence', 'habit', 'starts', 'length'].includes(t.name)) rerender();
       return true;
     },
     onClick(t) {
@@ -352,14 +368,13 @@ export function createGangs({ store, sb, toast, rerender, today, userId, setOpen
           if (habit) store.linkChallenge(habit, null);
           await load();
           if (again) {
-            starting = true;
             draft = { ...blankDraft(habit), name: g.name.slice(0, GANG_NAME_MAX), cadence: g.cadence, weekdays: g.weekdays || [1, 2, 3, 4, 5], timesPerWeek: g.timesPerWeek || 3 };
-            setOpen('new:gang');
-          } else setOpen(null);
+            go('#/flock/gang/new');
+          } else go('#/flock');
         }, () => toast(again ? `${g.name} is in your stamp book. Here it is again: pick the dates, then hand out new cards.` : `${g.name} is in your stamp book, on the Year.`));
         return true;
       }
-      if (t.closest('[data-gang-cancel]')) { setOpen(null); return true; }
+      if (t.closest('[data-gang-cancel]')) { draft = null; error = ''; go('#/flock'); return true; }
       const add = t.closest('[data-gang-add]');
       if (add) {
         const g = gangs.find((x) => x.id === add.dataset.gangAdd);
@@ -393,6 +408,7 @@ export function createGangs({ store, sb, toast, rerender, today, userId, setOpen
           await leaveGang(c, id);
           for (const [habit, gang] of Object.entries(store.get().links || {})) if (gang === id) store.linkChallenge(habit, null);
           await reload(c);
+          go('#/flock');
         }, () => toast(`You left ${g?.name || 'the gang'}. The habit is still yours.`));
         return true;
       }

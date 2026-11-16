@@ -12,7 +12,7 @@ export const LEVEL_LABELS = { none: 'Just buddies', doing: "How I'm doing", habi
 export const LEVEL_HINTS = {
   none: "That you're buddies, and your tag. Nothing about your habits.",
   doing: 'Your totals over the last 7 and 30 days, the trend and your longest run going. No habit names.',
-  habits: 'The totals, plus the habits you pick, each with its name and this month so far.',
+  habits: 'The totals, plus the habits you pick: their names, this month so far and, only if you turn it on, which days you ticked them.',
 };
 export const BUDDY_LIMIT = 50;
 export const INVITE_LIMIT = 10;

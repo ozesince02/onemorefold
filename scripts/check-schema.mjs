@@ -288,6 +288,36 @@ assert.deepEqual((await look(C, A)).habits, [], "C, at How I'm doing, sees no ha
 await as(A, "update public.habits set private = true where slug = 'dsa'");
 seen = await look(B, A);
 assert.deepEqual(seen.habits.map((x) => x.name), ['German'], 'a private habit never shows, even if picked');
+
+// Day by day (D-051): a separate yes at "My habits", off until turned on; only picked, not private
+// habits; only this month, the next and the 11 before.
+{
+  const M = (await db.query("select date_trunc('month', current_date)::date::text as m")).rows[0].m;
+  await as(A, 'insert into public.months (user_id, month) values ($1, $2) on conflict do nothing', [A, M]);
+  await as(A, `insert into public.habit_months (user_id, slug, month, name, goal, cadence) values
+    ($1, 'german', $2, 'German', 20, 'daily'), ($1, 'dsa', $2, 'DSA', 8, 'daily'), ($1, 'h1', $2, 'Habit 1', 5, 'daily')`, [A, M]);
+  await as(A, "insert into public.ticks (user_id, slug, day) values ($1, 'german', $2), ($1, 'dsa', $2), ($1, 'h1', $2)", [A, M]);
+  const month = async (who, buddy, m = M) => (await as(who, 'select * from public.buddy_month($1, $2)', [buddy, m])).rows;
+  assert.deepEqual(await month(B, A), [], 'the days stay hidden until A says yes to them');
+  assert.equal((await look(B, A)).their_days, false, 'and my_buddies says so');
+  assert.equal((await as(B, 'update public.buddies set days = true where user_id = $1', [A])).affectedRows, 0, "B can't turn on A's days");
+  await as(A, 'update public.buddies set days = true where buddy_id = $1', [B]);
+  const rows = await month(B, A);
+  assert.deepEqual(rows.map((r) => [r.slug, r.name, r.color, r.goal, r.cadence, r.days]), [['german', 'German', '#C8302C', 20, 'daily', [1]]],
+    'B sees the picked habit, its setup and its days; not the private one, not one A didn\'t pick');
+  assert.equal((await look(B, A)).their_days, true, 'my_buddies says the days are shown');
+  assert.equal((await look(A, B)).my_days, true, 'and A sees that they show them');
+  assert.deepEqual(await month(C, A), [], "C, at How I'm doing, sees no days");
+  assert.deepEqual(await month(B, A, '2020-01-01'), [], 'not more than 11 months back');
+  assert.deepEqual(await month(B, A, `${M.slice(0, 8)}02`), [], 'months only, by their first day');
+  assert.deepEqual(await month(C, B), [], 'nobody sees a stranger\'s days');
+  await rejects(as('anon', 'select * from public.buddy_month($1, $2)', [A, M]), /permission denied/, 'visitors see no days');
+  await as(A, "update public.buddies set level = 'doing' where buddy_id = $1", [B]);
+  assert.deepEqual(await month(B, A), [], 'leaving My habits hides the days, even with the yes still stored');
+  assert.equal((await look(B, A)).their_days, false, 'and my_buddies agrees');
+  await as(A, "update public.buddies set level = 'habits', days = false where buddy_id = $1", [B]);
+  await as(A, 'delete from public.months where month = $1', [M]);
+}
 await as(A, "update public.buddies set level = 'doing' where buddy_id = $1", [B]);
 seen = await look(B, A);
 assert.deepEqual(seen.habits, [], "How I'm doing: no habit names");

@@ -137,19 +137,30 @@ Shadows are allowed **only** on paper lying on paper. Buttons and controls are f
 - **Stamp book** (`.stamp-book`, D-047): on the Year view, a goshuin-cho. Kraft covers hold sheet
   pages (196px), one per finished gang, scrolling sideways when there are more than fit. Seals
   alternate a slight tilt.
-- **Flock panels:** both follow the same pattern.
+- **Flock lists** (`.flock-list`, `.flock-row`, D-050): Gangs and Buddies side by side.
   - **Head:** the heading, then the count and the crane note on the right, centred on one line.
-  - **Body:** a shelf of scrolls (D-048).
+  - **A row:** a slip on `--bg` with its paper colour as a 6px left edge: a mark (the gang's crane
+    folded as far as today, or the buddy's seal), the name in the display face with one line under
+    it, how it stands on the right (bold figure, small words), and a chevron. Hover nudges it right.
+    Under 480px the standing moves under the name and the chevron goes.
+  - **The end of a list:** a dashed slip with a dashed "+" ring ("Start a gang", "Hand over your
+    card").
+- **Flock pages** (D-050): a back link ("‹ Flock") above the title. A buddy's page puts their seal
+  beside their name; their month uses the Month tab's grid with `.is-readonly` (cells are images,
+  ticked = `.is-on`, nothing to press).
+- **Sugoroku board** (`.sugoroku`, `src/ui/sugoroku.js`, D-050): squares in rows of seven on a
+  `--bg` board, snaking back and forth, joined by a dotted `--ink-3` path drawn behind them.
+  - **Everyone folded:** the square takes a tint of a paper (sora, sakura, matcha, yamabuki in turn,
+    55% over the sheet) with the crane stamped in `--accent`, tilted.
+  - **Some folded:** a sheet square with a dot per member, red when folded; "2/4" when squares are
+    small (container under 480px). **Nobody:** a plain sheet square. **To come:** dashed, the
+    board's own colour. **Rest day:** a small dot.
+  - **Today:** a 3px ink border, and the piece: a round `--accent` token with the crane in
+    `--on-color`, on the square's top right. フリダシ (ai) marks the start, アガリ (accent) the end.
+  - **Order on narrow screens:** the board, today's crane, the members, then the settings.
 - **Reorder list** (`.reorder`, `src/ui/reorder.js`, D-049): on the Habits page, only the names in
   washi rows (grip, colour square, name, up and down). The row being dragged lifts onto a sheet
   with `--lift-high`; the arrows that can't move hide.
-- **Shelf and scroll** (`.shelf`, `.scroll`, `src/ui/shelf.js`, D-048):
-  - **The shelf:** a wooden plank (`--wood` tokens). Rolls stand on it with a steady tilt per item.
-  - **A roll:** knobs, round paper ends, a cord in the item's paper colour, a vertical name label
-    and a seal at the foot. Blank rolls (`.scroll--ghost`) are dashed.
-  - **Open:** the paper unrolls to the right with the item's band along its top, and an edge stick
-    on the right. The scrolls after it go to the shelf's end.
-  - **Pulled out:** when it doesn't fit, it opens in `.scroll-pull`, a modal dialog.
 - **Gang mark** (`.gang-mark`): a light outlined pill reading "gang", in the text's own colour,
   beside a gang habit's name. "gang" has descenders and no ascenders, so its label sits 2px higher
   than the box would put it.

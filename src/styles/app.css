@@ -114,8 +114,8 @@
   transition: background-color .15s, transform .2s var(--ease-paper);
 }
 .cell:hover { background: var(--bg-3); transform: scale(1.08); }
-.cell[aria-pressed="true"] { background: var(--c); }
-.cell[aria-pressed="true"]::after { content: ''; position: absolute; right: 0; top: 0; width: 38%; height: 38%; background: var(--paper-back); clip-path: polygon(0 0, 100% 100%, 0 100%); opacity: .85; }
+.cell[aria-pressed="true"], .cell.is-on { background: var(--c); }
+.cell[aria-pressed="true"]::after, .cell.is-on::after { content: ''; position: absolute; right: 0; top: 0; width: 38%; height: 38%; background: var(--paper-back); clip-path: polygon(0 0, 100% 100%, 0 100%); opacity: .85; }
 .cell.future { background: transparent; outline: 1px solid var(--bg-3); outline-offset: -1px; }
 .cell.future:hover { background: var(--bg); }
 /* Schedules (D-013): a rest day has no box, just a quiet dot; weekly and monthly boxes are paler,
@@ -123,7 +123,7 @@
 .cell.rest { background: transparent; cursor: default; display: grid; place-items: center; }
 .cell.rest::before { content: ''; width: 4px; height: 4px; border-radius: 50%; background: var(--bg-3); }
 .cell.rest:hover { transform: none; }
-.cell.flex:not([aria-pressed="true"]) { background: var(--bg); outline: 1px dashed var(--bg-3); outline-offset: -1px; }
+.cell.flex:not([aria-pressed="true"]):not(.is-on) { background: var(--bg); outline: 1px dashed var(--bg-3); outline-offset: -1px; }
 .habit-grid td.sum small { font-size: 13px; color: var(--ink-2); margin-left: 1px; }
 /* Schedule controls in the habit editor */
 .edit-schedule { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; padding-left: 52px; }
@@ -144,7 +144,7 @@
 .strip-h { font-family: var(--text); font-weight: 700; font-size: 14px; color: var(--ink-2); margin: 16px 0 6px; letter-spacing: 0; }
 .cell.na { background: transparent; cursor: default; background-image: repeating-linear-gradient(135deg, transparent 0 4px, var(--bg-3) 4px 5px); }
 .cell.na:hover { transform: none; }
-td.is-today .cell:not([aria-pressed="true"]) { outline: 2px solid var(--ink); outline-offset: -2px; }
+td.is-today .cell:not([aria-pressed="true"]):not(.is-on) { outline: 2px solid var(--ink); outline-offset: -2px; }
 .cell:focus-visible { outline: 3px solid var(--link); outline-offset: 1px; }
 .habit-grid td.sum { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; padding-right: 6px; }
 .habit-grid td.sum.neg { color: var(--good); }
@@ -431,33 +431,11 @@ td.is-today .cell:not([aria-pressed="true"]) { outline: 2px solid var(--ink); ou
 .my-card-tag { font-family: var(--display); font-size: 24px; line-height: 1.15; overflow-wrap: anywhere; }
 .my-card-tag span { color: var(--accent-ink); }
 .flock-change { margin-top: 16px; }
-.flock-change summary, .meishi-share summary { cursor: pointer; font-weight: 700; color: var(--link); }
+.flock-change summary { cursor: pointer; font-weight: 700; color: var(--link); }
 .flock-change[open] summary { margin-bottom: 12px; }
 
-.meishi {
-  display: grid; gap: 6px; align-content: start; padding: 14px 16px 16px; rotate: -.6deg;
-  background: var(--sheet); border-top: 8px solid var(--paper); filter: var(--lift);
-}
-.meishi:nth-child(even) { rotate: .7deg; }
-.meishi--sora { --paper: var(--sora); }
-.meishi--sakura { --paper: var(--sakura); }
-.meishi--matcha { --paper: var(--matcha); }
-.meishi--yamabuki { --paper: var(--yamabuki); }
-.meishi--kraft { --paper: var(--kraft); }
-.meishi header { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 46px; margin-bottom: 6px; }
-.meishi h3 { font-family: var(--display); font-weight: 400; font-size: 20px; line-height: 1.15; overflow-wrap: anywhere; }
-.meishi-figure b { display: block; font-family: var(--display); font-weight: 400; font-size: 24px; line-height: 1.1; }
-.meishi-figure span { display: block; font-size: 14px; color: var(--ink-2); }
-.meishi-trend { font-weight: 700; font-size: 14px; color: var(--ink-2); }
-.meishi-trend--rising { color: var(--good); }
-.meishi-habits { list-style: none; padding: 0; margin: 4px 0 0; display: grid; gap: 2px; font-size: 14px; }
-.meishi-habits span { font-weight: 700; }
-.meishi-share { margin-top: 8px; padding-top: 8px; border-top: 2px dashed var(--bg-3); }
-.meishi-share summary, .flock-change summary, .gang-settings summary { font-size: 14px; }
-.meishi-share .choice, .share-habits { margin-top: 10px; }
 .meishi-remove { display: grid; gap: 8px; justify-items: start; margin-top: 10px; font-size: 14px; }
 .meishi-remove-link { margin-top: 10px; }
-.share-habits em { font-style: normal; color: var(--ink-3); font-weight: 500; }
 
 .card-link { width: 100%; margin: 6px 0 10px; padding: 8px 10px; border: 0; background: var(--bg); color: var(--ink); font: inherit; font-size: 13px; }
 .open-cards { list-style: none; padding: 0; margin: 0 0 8px; display: grid; gap: 6px; }
@@ -467,7 +445,7 @@ td.is-today .cell:not([aria-pressed="true"]) { outline: 2px solid var(--ink); ou
 .card-from h2 { font-family: var(--display); font-weight: 400; font-size: 24px; overflow-wrap: anywhere; }
 .edit-row .private-toggle { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; font-weight: 500; font-size: 14px; cursor: pointer; }
 .edit-row .private-toggle input { width: 18px; height: 18px; padding: 0; flex: none; accent-color: var(--accent); }
-/* Gangs (D-046): today's crane folded one fold per member, and the banner of stamps */
+/* Gangs (D-046, D-050): the start form, the gang crane folded one fold per member, the members */
 /* Both Flock panels: the heading, then the note and the crane on the right, centred on one line */
 .flock-gangs .panel-head, .flock-buddies .panel-head { flex-wrap: wrap; align-items: center; }
 .flock-head-side { display: flex; align-items: center; gap: 12px 16px; flex-wrap: wrap; justify-content: flex-end; }
@@ -478,43 +456,27 @@ td.is-today .cell:not([aria-pressed="true"]) { outline: 2px solid var(--ink); ou
 .gang-form input:focus, .gang-form select:focus, .gang-edit input:focus { outline: 2px solid var(--link); outline-offset: 0; }
 .gang-days { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px 12px; grid-column: 1 / -1; }
 .gang-days label { display: flex; align-items: center; gap: 4px; font-size: 14px; }
-.gang {
-  display: grid; gap: 16px; align-content: start; padding: 16px 20px 18px;
-  background: var(--sheet); border-top: 8px solid var(--ai); filter: var(--lift);
-}
-.gang > header { display: grid; gap: 2px; }
-
-.gang h3 { font-family: var(--display); font-weight: 400; font-size: 22px; line-height: 1.15; overflow-wrap: anywhere; }
 .gang-today { display: flex; align-items: center; gap: 16px; }
 .gang-today-main { font-weight: 900; font-size: 17px; }
 .gang-crane { position: relative; display: block; flex: none; width: 96px; }
 .gang-crane .crane-mark { display: block; width: 100%; height: auto; }
 .gang-crane-folded { position: absolute; inset: 0; clip-path: inset(calc((1 - var(--fold)) * 100%) 0 0 0); }
-.gang-unlinked { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; padding: 10px 12px; background: var(--bg); font-size: 14px; font-weight: 700; }
-.gang-banner { display: flex; gap: 10px; align-items: stretch; }
-.nobori { flex: none; width: 34px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 8px 0; background: var(--ai); color: var(--on-color); font-family: var(--display); font-size: 17px; line-height: 1.05; }
-.stamps-scroll { overflow-x: auto; min-width: 0; flex: 1; }
-.stamps { border-collapse: collapse; font-size: 13px; }
-.stamps th, .stamps td { padding: 4px 3px; text-align: center; }
-.stamps thead th { font-weight: 700; color: var(--ink-2); line-height: 1.1; }
-.stamps thead small { display: block; font-weight: 500; color: var(--ink-3); }
-.stamps tbody th { text-align: left; font-weight: 700; white-space: nowrap; padding-right: 12px; }
-.stamps tbody th em { font-style: normal; font-weight: 500; color: var(--ink-3); font-size: 12px; }
-.stamp-name { max-width: 12ch; overflow: hidden; text-overflow: ellipsis; }
-.stamp { display: inline-block; width: 18px; height: 18px; border-radius: 50%; border: 2px dashed var(--ink-3); vertical-align: middle; }
-.stamp--on { border: 2.5px solid var(--accent); background: var(--accent); rotate: -10deg; }
-.stamp--rest { border: 0; width: 6px; height: 6px; background: var(--bg-3); }
-.stamps td.stamp-sum { text-align: left; white-space: nowrap; color: var(--ink-2); padding-left: 10px; }
-.gang-settings { padding-top: 12px; border-top: 2px dashed var(--bg-3); }
-.gang-settings summary { cursor: pointer; font-weight: 700; color: var(--link); }
-.gang-settings[open] { display: grid; gap: 10px; justify-items: start; }
-.gang-settings[open] summary { margin-bottom: 4px; }
+.gang-unlinked { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; margin: 0 0 24px; padding: 12px 16px; background: var(--sheet); font-size: 14px; font-weight: 700; }
+.gang-settings { display: grid; gap: 10px; justify-items: start; align-content: start; }
+.gang-settings .panel-head { justify-self: stretch; margin-bottom: 4px; }
 .gang-edit { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 14px; padding: 12px; background: var(--bg); justify-self: stretch; }
 .gang-edit label { display: grid; gap: 4px; font-size: 13px; font-weight: 700; color: var(--ink-2); }
 .gang-edit .note { flex-basis: 100%; }
 .gang-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 14px; }
+.gang-members { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.gang-members li { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; grid-template-areas: "seal name now" "seal fig fig"; column-gap: 12px; align-items: center; }
+.gang-members .hanko { grid-area: seal; }
+.gang-member-name { grid-area: name; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gang-member-name em { font-style: normal; font-weight: 500; font-size: 12px; color: var(--ink-3); }
+.gang-member-now { grid-area: now; font-size: 12px; font-weight: 700; padding: 1px 8px 2px; border-radius: 999px; border: 1.5px solid var(--bg-3); color: var(--ink-2); }
+.gang-member-now.is-done { border-color: var(--accent); color: var(--accent-ink); }
+.gang-member-figure { grid-area: fig; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
 /* A finished gang (D-047): a certificate (shojo) with a double red frame, to keep on the Year */
-.gang--done { border-top: 0; padding: 14px; }
 .certificate { display: grid; gap: 10px; justify-items: center; text-align: center; padding: 18px 16px; border: 3px double var(--accent); }
 .cert-kicker { font-family: var(--display); font-size: 13px; letter-spacing: .3em; color: var(--accent-ink); }
 .certificate h3 { font-family: var(--display); font-weight: 400; font-size: 24px; line-height: 1.15; overflow-wrap: anywhere; }
@@ -537,88 +499,129 @@ td.is-today .cell:not([aria-pressed="true"]) { outline: 2px solid var(--ink); ou
 .book-cranes { font-size: 13px; color: var(--ink-2); }
 .book-cranes b { display: block; font-family: var(--display); font-weight: 400; font-size: 30px; line-height: 1.05; color: var(--accent-ink); }
 
-/* ---------- Shelves of scrolls (D-048) ----------
-   Each gang and each buddy is a big rolled scroll standing upright on a wooden shelf, a little
-   crooked. Unrolled, its roll stays standing at the left and the paper comes out to the right, the
-   other scrolls sliding to the end of the shelf. */
-/* One height for every shelf and scroll, open or rolled. */
-.shelves, .scroll-pull { --roll-h: 270px; }
-.shelves { display: grid; gap: 22px; }
-.shelf { display: flex; align-items: flex-end; gap: 12px; padding: 8px 16px 0; height: calc(var(--roll-h) + 8px); }
-.shelf-plank { height: 14px; background: var(--wood); border-top: 3px solid var(--wood-top); box-shadow: 0 6px 0 var(--wood-under); border-radius: 2px; }
-.scroll { position: relative; display: flex; align-items: stretch; flex: none; height: var(--roll-h); min-width: 0; transform: rotate(var(--tilt)); transform-origin: bottom center; transition: transform .35s ease; }
-.scroll.is-open { transform: none; }
-.scroll.is-open + .scroll { margin-left: auto; }
-.scroll-roll {
-  all: unset; box-sizing: border-box; position: relative; flex: none; width: 46px; height: 100%; cursor: pointer;
-  transition: width .5s ease;
+/* ---------- Flock as two lists, and a page each (D-050) ----------
+   A gang or a buddy is a slip of paper in a list, its own colour down the left edge; tapping it
+   opens its page. */
+.flock-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.flock-row {
+  display: grid; grid-template-columns: 52px minmax(0, 1fr) auto auto; align-items: center; gap: 4px 14px;
+  min-height: 74px; padding: 12px 14px 12px 12px; box-sizing: border-box;
+  background: var(--bg); border-left: 6px solid var(--c, var(--bg-3)); color: var(--ink); text-decoration: none;
+  transition: transform .2s var(--ease-paper), background-color .15s;
 }
-.scroll-roll:focus-visible { outline: 3px solid var(--link); outline-offset: 4px; }
-.scroll.is-open .scroll-roll { width: 30px; }
-.scroll-knob { position: absolute; left: 50%; width: 16px; height: 9px; translate: -50% 0; background: var(--wood-knob); border-radius: 3px; }
-.scroll-knob--t { top: 0; }
-.scroll-knob--b { bottom: 0; }
-.scroll-cap { position: absolute; left: 0; right: 0; height: 12px; border-radius: 50%; background: var(--bg); border: 2px solid var(--kraft); }
-.scroll-cap--t { top: 5px; }
-.scroll-cap--b { bottom: 5px; }
-.scroll-cyl { position: absolute; top: 11px; bottom: 11px; left: 0; right: 0; background: var(--sheet); border-inline: 2px solid var(--kraft); overflow: hidden; }
-.scroll-cyl::after { content: ''; position: absolute; top: 0; bottom: 0; right: 0; width: 24%; background: var(--bg-2); }
-.scroll-tie { position: absolute; left: 0; right: 0; top: 64%; height: 7px; background: var(--c); }
-.scroll-label {
-  position: absolute; left: 50%; top: 22px; translate: -50% 0; z-index: 1; max-height: 98px; padding: 6px 2px;
-  writing-mode: vertical-rl; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  background: var(--sheet); font-family: var(--display); font-size: 12px; line-height: 1;
+a.flock-row:hover { background: var(--bg-2); transform: translateX(3px); }
+a.flock-row:focus-visible { outline: 3px solid var(--link); outline-offset: 2px; }
+.flock-row-mark { display: grid; place-items: center; }
+.flock-row-mark .gang-crane { width: 52px; }
+.flock-row-main { display: grid; gap: 3px; min-width: 0; }
+.flock-row-main b { font-family: var(--display); font-weight: 400; font-size: 19px; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flock-row-main small, .flock-row-side small { font-size: 13px; line-height: 1.3; color: var(--ink-2); }
+.flock-row-side { display: grid; justify-items: end; gap: 2px; text-align: right; }
+.flock-row-side b { font-weight: 900; font-size: 16px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.flock-row-go { width: 18px; height: 18px; color: var(--ink-3); }
+.flock-row--new { background: transparent; border: 2px dashed var(--bg-3); }
+a.flock-row--new:hover { background: var(--bg); }
+.flock-row-plus { width: 40px; height: 40px; border-radius: 50%; border: 2px dashed var(--ink-3); font-size: 22px; line-height: 1; color: var(--ink-2); box-sizing: border-box; }
+.flock-handover .btn { justify-self: end; }
+.flock-handover-link { grid-column: 1 / -1; display: grid; gap: 4px; margin-top: 8px; }
+.trend--rising { color: var(--good); font-weight: 700; }
+/* A gang's or a buddy's page */
+.flock-page-title .back-link { grid-column: 1 / -1; justify-self: start; }
+.back-link { display: inline-flex; align-items: center; gap: 2px; margin-bottom: 6px; font-weight: 700; font-size: 15px; color: var(--link); text-decoration: none; }
+.back-link svg { width: 18px; height: 18px; }
+.back-link:hover { text-decoration: underline; }
+.buddy-title { display: flex; align-items: center; gap: 16px; }
+.buddy-title span { overflow-wrap: anywhere; }
+.buddy-figure-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 18px 28px; }
+.buddy-month-nav { display: flex; align-items: center; gap: 8px; }
+.buddy-share .choice { margin-bottom: 6px; }
+.share-habits { margin-top: 6px; }
+.share-habits em { font-style: normal; color: var(--ink-3); font-weight: 500; }
+.share-days { display: grid; grid-template-columns: 22px 1fr; gap: 12px; align-items: start; margin-top: 12px; padding: 12px 8px 4px; border-top: 2px dashed var(--bg-3); font-size: 14px; line-height: 1.4; color: var(--ink-2); cursor: pointer; }
+.share-days input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--accent); }
+.share-days b { color: var(--ink); }
+.buddy-habits-panel { align-self: start; }
+.buddy-habits { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; font-size: 15px; color: var(--ink-2); }
+.buddy-habits li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.buddy-habits span { margin-right: auto; font-weight: 700; color: var(--ink); }
+.buddy-habits b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.habit-grid.is-readonly .cell { cursor: default; }
+.habit-grid.is-readonly .cell:hover { transform: none; }
+.habit-grid.is-readonly .cell:not(.is-on):not(.future):not(.rest):not(.na):not(.flex):hover { background-color: var(--bg-2); }
+.habit-grid.is-readonly .cell.future:hover, .habit-grid.is-readonly .cell.rest:hover { background-color: transparent; }
+
+/* ---------- The sugoroku board (D-050) ----------
+   The gang's run as a paper board game: squares snake along rows of seven, joined by a dotted
+   path; everyone folded = the crane stamped on a coloured square; the piece stands on today. */
+.sugoroku { container-type: inline-size; max-width: 680px; margin: 0 auto; padding: 30px 14px 22px; background: var(--bg); border-radius: 6px; }
+.sugoroku-field { position: relative; }
+.sugoroku-path { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.sugoroku-path polyline { fill: none; stroke: var(--ink-3); stroke-width: 3; stroke-dasharray: 1 9; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; opacity: .7; }
+.sugoroku-squares { position: relative; list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.sq { position: relative; aspect-ratio: 1; padding: 8%; box-sizing: border-box; }
+.sq-paper { position: relative; display: block; width: 100%; height: 100%; box-sizing: border-box; background: var(--sheet); border: 2px solid var(--bg-3); border-radius: 4px; }
+.sq--all .sq-paper { background: color-mix(in srgb, var(--tint) 55%, var(--sheet)); border-color: transparent; filter: var(--lift); }
+/* Squares still to come and rest days are the board's own colour, so the path passes under them. */
+.sq--future .sq-paper { background: var(--bg); border-style: dashed; }
+.sq--rest .sq-paper { background: var(--bg); border-color: transparent; }
+.sq--rest .sq-paper::after { content: ''; position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; translate: -50% -50%; border-radius: 50%; background: var(--bg-3); }
+.sq.is-now .sq-paper { border: 3px solid var(--ink); }
+.sq-date { position: absolute; top: 7%; left: 9%; font-size: clamp(10px, 2.2cqi, 13px); font-weight: 700; line-height: 1; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.sq-date small { display: block; margin-top: 2px; font-size: .85em; font-weight: 500; color: var(--ink-3); }
+.sq--all .sq-date, .sq--all .sq-date small { color: var(--ink); }
+.sq-stamp { position: absolute; inset: 30% 12% 12%; display: grid; place-items: center; rotate: -8deg; }
+.sq-stamp .crane-mark { width: 100%; height: auto; }
+/* Some folded: a dot per member on a wide board; just "2/4" when the squares are small. */
+.sq-count { display: none; position: absolute; right: 10%; bottom: 8%; font-weight: 900; font-size: clamp(11px, 2.8cqi, 16px); line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; }
+.sq-dots { position: absolute; left: 8%; right: 8%; bottom: 12%; display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; }
+.sq-dots i { width: 9px; height: 9px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid var(--ink-3); }
+.sq-dots i.on { background: var(--accent); border-color: var(--accent); }
+.sq--all .sq-dots { display: none; }
+@container (max-width: 480px) { .sq-dots { display: none; } .sq-count { display: block; } }
+.sq-flag { position: absolute; z-index: 1; padding: 3px 6px 4px; font-family: var(--display); font-size: 12px; line-height: 1; white-space: nowrap; color: var(--on-color); }
+.sq-flag--start { top: -16px; left: 6%; background: var(--ai); rotate: -4deg; }
+.sq-flag--end { bottom: -12px; right: 6%; background: var(--accent); rotate: 3deg; }
+.koma { position: absolute; z-index: 2; top: -2%; right: -2%; width: 42%; aspect-ratio: 1; display: grid; place-items: center; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--bg), 0 3px 0 var(--accent-ink); }
+.koma .crane-mark { width: 72%; height: auto; }
+.koma--waiting { top: 34%; right: auto; left: -8%; }
+.koma--home { top: auto; bottom: 12%; right: -4%; }
+.sugoroku-legend { padding: 14px 0 0; }
+.sugoroku-legend i, .sugoroku-legend b { display: inline-grid; place-items: center; flex: none; width: 18px; height: 18px; box-sizing: border-box; }
+.sugoroku-legend b { width: auto; font-weight: 900; color: var(--ink); }
+.sugoroku-legend .crane-mark { width: 16px; height: auto; }
+.lg-plain { background: var(--sheet); border: 2px solid var(--bg-3); }
+.lg-rest::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--bg-3); }
+.sugoroku-legend .lg-koma { border-radius: 50%; background: var(--accent); }
+.sugoroku-legend .lg-koma .crane-mark { width: 12px; }
+.sugoroku-panel .panel-head { flex-wrap: wrap; }
+@container (max-width: 480px) { .sq-date small { display: none; } }
+.gang-cert-panel .certificate { max-width: 640px; margin: 0 auto; }
+/* Narrower screens: one column of panels in reading order, the board first and the settings last. */
+@media (max-width: 1180px) {
+  .gang-page > .side-stack { display: contents; }
+  .gang-page .gang-cert-panel { order: 0; grid-column: 1 / -1; }
+  .gang-page .sugoroku-panel { order: 1; grid-column: 1 / -1; }
+  .gang-page .gang-crane-panel { order: 2; grid-column: span 6; }
+  .gang-page .gang-members-panel { order: 3; grid-column: span 6; }
+  .gang-page.is-over .gang-members-panel, .gang-page .gang-settings { order: 4; grid-column: 1 / -1; }
 }
-.scroll-seal {
-  position: absolute; left: 50%; bottom: 22px; translate: -50% 0; z-index: 1; display: grid; place-items: center;
-  width: 26px; height: 26px; border: 1.5px solid var(--accent); border-radius: 50%; background: var(--sheet);
-  color: var(--accent-ink); font-family: var(--display); font-size: 8px; rotate: -8deg;
+@media (max-width: 760px) {
+  .gang-page .gang-crane-panel, .gang-page .gang-members-panel { grid-column: 1 / -1; }
 }
-.scroll-seal[data-len="4"] { font-size: 7px; }
-.scroll-seal[data-len="5"] { font-size: 6px; }
-.scroll.is-open .scroll-label, .scroll.is-open .scroll-seal, .scroll.is-open .scroll-tie { opacity: 0; transition: opacity .2s; }
-/* The paper: as wide as its sections, up to the room the shelf has; past that it scrolls sideways. */
-.scroll-sheet { max-width: 0; overflow-x: auto; overflow-y: hidden; margin: 14px 0; background: var(--sheet); border-top: 4px solid var(--c); transition: max-width .5s ease; }
-.scroll.is-open .scroll-sheet { max-width: var(--max); }
-.scroll-body { width: max-content; height: 100%; padding: 14px 18px; box-sizing: border-box; }
-.sheet-cols { display: flex; align-items: stretch; height: 100%; }
-.sheet-col { flex: none; width: 236px; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
-.sheet-col + .sheet-col { margin-left: 22px; padding-left: 22px; border-left: 2px dashed var(--bg-3); }
-.sheet-col--fit { width: auto; }
-.scroll-edge { width: 0; margin: 8px 0; background: var(--wood-knob); border-radius: 4px; transition: width .5s ease; }
-.scroll.is-open .scroll-edge { width: 9px; }
-.scroll-title { font-family: var(--display); font-weight: 400; font-size: 20px; line-height: 1.15; margin-bottom: 4px; }
-/* A blank scroll at the end of a shelf: start a gang, hand over your card. */
-.scroll--ghost .scroll-cyl { background: var(--bg); border-style: dashed; }
-.scroll--ghost .scroll-label { background: var(--bg); color: var(--ink-2); }
-/* What a gang or a buddy shows, now that the scroll is its paper */
-.scroll-body .gang, .scroll-body .meishi { padding: 0; background: none; border: 0; filter: none; rotate: 0deg; display: flex; gap: 0; }
-.scroll-body .meishi header { margin-bottom: 4px; }
-.scroll-body .gang-form { display: flex; gap: 0; margin-left: 22px; padding-left: 22px; border-left: 2px dashed var(--bg-3); }
-.scroll-body .gang-form .sheet-col { gap: 10px; }
-.scroll-body .gang-today { flex-direction: column; align-items: flex-start; gap: 8px; }
-.scroll-body .meishi-share, .scroll-body .gang-settings { margin: 0; padding-top: 0; border-top: 0; }
-.scroll-body .meishi-habits { gap: 6px; }
-.scroll-body .gang-crane { width: 90px; }
-.scroll-body .stamps th, .scroll-body .stamps td { padding: 3px; }
-.scroll-body .stamp { width: 16px; height: 16px; }
-.scroll-body .certificate { padding: 12px 14px; }
-.scroll-body .certificate .sheet-col { justify-content: center; align-items: center; text-align: center; }
-.scroll-body .cert-members { margin: 0; padding: 0 0 0 22px; border-top: 0; max-width: none; width: 260px; justify-content: center; }
-.scroll-body .cert-cranes b { font-size: 38px; }
-/* Pulled out of the shelf: the scroll unrolls on its own, over the page. */
-.scroll-pull { padding: 28px 20px 20px; border: 0; background: transparent; max-width: 96vw; max-height: 92vh; overflow: visible; }
-.scroll-pull::backdrop { background: var(--scrim); }
-.scroll-pull:focus { outline: none; }
-.scroll-pull-inner { display: flex; justify-content: center; }
-.scroll-pull .scroll { transform: none; }
-/* On its own the paper is as wide as the screen allows, roll and edge included. */
-.scroll-pull .scroll.is-open .scroll-sheet { max-width: calc(96vw - 120px); animation: unroll .5s ease; }
-.scroll-pull-close { display: block; margin: 16px auto 0; }
-@keyframes unroll { from { max-width: 0; } }
-@media (prefers-reduced-motion: reduce) {
-  .scroll, .scroll-roll, .scroll-sheet, .scroll-edge { transition: none; }
-  .scroll-pull .scroll-sheet { animation: none; }
+@media (max-width: 480px) {
+  .flock-row { grid-template-columns: 46px minmax(0, 1fr) auto; gap: 4px 10px; padding-right: 12px; }
+  /* The name gets the whole width; how it stands goes on a line of its own under it. */
+  a.flock-row:not(.flock-row--new) { grid-template-columns: 46px minmax(0, 1fr); }
+  .flock-row-mark { grid-row: span 2; }
+  .flock-row-side { grid-column: 2; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; justify-items: start; text-align: left; }
+  .flock-row-side b { font-size: 15px; }
+  .buddy-figure-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .buddy-figures .panel-head { flex-wrap: wrap; }
+  .flock-row-mark .gang-crane { width: 46px; }
+  .flock-row-go { display: none; }
+  .flock-handover .btn { grid-column: 1 / -1; justify-self: start; }
+  .sugoroku { padding: 26px 6px 18px; }
+  .sq-flag { font-size: 10px; }
 }
 
 .gang-mark {

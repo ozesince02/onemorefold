@@ -968,7 +968,7 @@ Accepted · 13 Nov 2026 · builds on D-046
 
 
 ## D-048 Flock as shelves of upright scrolls
-Accepted · 13 Nov 2026 · changes how D-044 lays out Flock
+Replaced by D-050 (17 Nov 2026) · Accepted · 13 Nov 2026 · changes how D-044 lays out Flock
 
 - **Context:** the owner wanted Flock to feel like a place rather than a page of cards: gangs and
   buddies as big rolled scrolls standing upright on wooden shelves, like the big scrolls carried in
@@ -1018,3 +1018,52 @@ Accepted · 13 Nov 2026
   - **The editor rows** lose their up and down buttons: reordering has its own place now.
 - **Scope:** the order is per month, like everything on the Habits page.
 
+## D-050 Flock as two lists, and a page for each gang and buddy
+Accepted · 17 Nov 2026 · replaces D-048
+
+- **Context:** the shelves of scrolls (D-048) looked good standing still but were hard to read and
+  use: everything about a gang or a buddy had to fit sideways inside one unrolled scroll. The owner
+  didn't like it and asked for two plain lists, with a page or a pop-up for each gang and buddy, a
+  buddy's page like the Month tab, and a fresh idea for a gang's.
+- **Decision:** Flock is two lists side by side, **Gangs** and **Buddies**, then "Your card".
+  - **A row** is a slip of paper with its colour down the left edge: a gang shows its crane folded
+    as far as today, its schedule and day ("day 7 of 30") and how today stands ("2 of 4 folded
+    today"); a buddy shows their seal, what they share ("Shares habits, day by day · Rising") and
+    their last 7 days. "Start a gang" and "Hand over your card" end the lists.
+  - **Pages, not pop-ups:** `#/flock/gang/<id>`, `#/flock/buddy/<id>` and `#/flock/gang/new`. The
+    back button works, a page has room, and nothing needs a modal's focus handling.
+  - **A buddy's page:** their four figures (last 7 days, last 30, longest run going, trend), then,
+    when they share their days (D-051), their month exactly as the Month tab draws it, read-only,
+    with months to step back through. Below, what you share with them, and removing them.
+  - **A gang's page: a sugoroku board.** The gang's whole run as a paper board game the gang walks
+    together, rows of seven squares joined by a dotted path (for a daily gang, a row is a week;
+    rest days are squares too). A square everyone folded has the gang's crane stamped on a coloured
+    square; some folded shows a dot per member (or "2/4" on small screens); nobody folded stays
+    plain paper. The piece stands on today and moves on a square a day whatever happened: nobody is
+    ever sent back. フリダシ marks the start, アガリ the finish. Beside it: today's gang crane with
+    who's still to fold, the members with their figures, and the gang's settings. The board counts
+    exactly what the gang cranes count (`boardOf()` and `gangCranes()` agree, checked by
+    `scripts/check-gangs.mjs`).
+  - **Considered for the gang page:** cranes flying in a V (only today reads well) and a row of
+    lanterns (lovely in Dark, quiet about the whole run). The board shows both today and the run.
+- **Removed:** the shelves, scrolls and pulled-out dialog (`src/ui/shelf.js`), the wood tokens,
+  and the stamp banner, which the board replaces.
+
+## D-051 Buddies may share their days
+Accepted · 17 Nov 2026 · changes D-029's "figures, not grids"
+
+- **Context:** D-029 kept buddies to totals and trends, never a day-by-day grid, so a buddy could
+  notice someone going quiet without seeing which days they missed. For the buddy page (D-050) the
+  owner asked for the Month tab's view of a buddy, with the buddy deciding what to share.
+- **Decision:** at "My habits", someone can also show the days they ticked the habits they picked.
+  - **A separate yes** (`buddies.days`), stored per buddy and **off until it's turned on**, for
+    everyone, including those who chose "My habits" before: nobody shows more than they agreed to.
+    "Day by day too", under the habits picked for that buddy, turns it on or off. Choosing a level
+    never turns it on, and leaving "My habits" turns it off (security review, 17 Nov 2026).
+  - **Only through `buddy_month()`:** the pair must exist both ways, the buddy must share at "My
+    habits" with the days on, and only the habits they picked come back, never a private one. It
+    returns each habit's setup that month (name, colour, goal, first day, schedule) and the days
+    ticked, for this month, the next (time zones) and the 11 before; nothing else from the tracker.
+  - **Read-only:** nobody can tick for anyone else.
+- **Not changed:** "Just buddies" and "How I'm doing" show what they did; buddies still never see
+  times, wishes or private habits.
