@@ -3,6 +3,23 @@
 What changed, for people using the app. Why it changed lives in [docs/decisions.md](docs/decisions.md).
 Dates are when the work landed.
 
+## Unreleased
+
+### Changed
+- **Flock is two lists.** Your gangs and your buddies, side by side, each a slip that says how it
+  stands at a glance: how many in a gang folded today, a buddy's last 7 days and their trend. The
+  shelves of scrolls are gone.
+- **A page for every gang: a sugoroku board.** The gang's whole run is a paper board game you walk
+  together, a square a day. Everyone folded and the square gets the gang's crane; some folded and
+  it shows who; the piece stands on today. Nobody is ever sent back. Today's crane, the members and
+  the gang's settings sit beside it.
+- **A page for every buddy,** with their figures and, if they share their days, their month the way
+  your own Month tab shows it, read-only, with earlier months a tap away.
+
+### Added
+- **"Day by day too".** At "My habits", you can let a buddy see which days you ticked the habits
+  you picked. It's off until you turn it on, and choosing "My habits" never turns it on by itself.
+
 ## 0.20.2 — 13 November 2026
 
 ### Fixed

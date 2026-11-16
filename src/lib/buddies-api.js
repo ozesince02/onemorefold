@@ -4,6 +4,8 @@
 import { LEVELS } from './buddies.js';
 import { groupGangs, GANG_NAME_MAX } from './gangs.js';
 import { CADENCES } from './schedule.js';
+import { safeColor, safeName, cleanSchedule } from './sanitize.js';
+import { daysIn, pad } from './dates.js';
 
 const ID = /^[0-9a-f-]{36}$/;
 const SLUG = /^[a-z0-9][a-z0-9-]{0,63}$/;
@@ -148,13 +150,42 @@ export async function loadBuddies(sb) {
       run: num(r.run) || 0,
     } : null,
     habits: Array.isArray(r.habits) ? r.habits.filter((h) => typeof h?.name === 'string' && num(h.done) !== null && num(h.due) !== null).slice(0, 50) : [],
+    since: typeof r.since === 'string' && DAY.test(r.since.slice(0, 10)) ? r.since.slice(0, 10) : '',
+    myDays: r.my_days === true,
+    theirDays: r.their_days === true,
   }));
 }
 
-export async function saveSharing(sb, userId, buddyId, level, habits) {
+export async function saveSharing(sb, userId, buddyId, level, habits, days = false) {
   if (!ID.test(buddyId) || !LEVELS.includes(level)) return;
-  const row = { level, habits: level === 'habits' ? [...new Set(habits)].filter((s) => SLUG.test(s)).slice(0, 50) : [] };
+  const row = { level, habits: level === 'habits' ? [...new Set(habits)].filter((s) => SLUG.test(s)).slice(0, 50) : [], days: level === 'habits' && days === true };
   check(await sb.from('buddies').update(row).eq('user_id', userId).eq('buddy_id', buddyId), "That couldn't be saved. Try again.");
+}
+
+// One month of a buddy's shared habits, day by day (D-051), as a month the tracker's own maths
+// reads: { habits: [{ id, name, goal, start, cadence, ... }], checks: { id: [days] }, colors: { id } }.
+// Only what buddy_month() lets through (picked, not private, while they share the days); anything
+// that doesn't look right is dropped.
+export async function loadBuddyMonth(sb, buddyId, y, m) {
+  const empty = { habits: [], checks: {}, colors: {} };
+  if (!ID.test(buddyId) || !Number.isInteger(y) || !Number.isInteger(m) || m < 1 || m > 12) return empty;
+  const rows = check(await sb.rpc('buddy_month', { p_buddy: buddyId, p_month: `${y}-${pad(m)}-01` }), "Couldn't load their month. Check your connection.");
+  const last = daysIn(y, m);
+  const out = { habits: [], checks: {}, colors: {} };
+  for (const r of (rows || []).slice(0, 50)) {
+    if (!SLUG.test(r?.slug || '') || out.checks[r.slug]) continue;
+    const name = safeName(r.name);
+    if (!name) continue;
+    const habit = {
+      id: r.slug, name, goal: Math.min(31, Math.max(0, Number.isInteger(r.goal) ? r.goal : 0)), time: '',
+      start: Number.isInteger(r.start_day) && r.start_day >= 1 && r.start_day <= last ? r.start_day : 1,
+      ...cleanSchedule({ cadence: r.cadence, weekdays: r.weekdays, timesPerWeek: r.times_per_week }),
+    };
+    out.habits.push(habit);
+    out.checks[r.slug] = [...new Set((r.days || []).filter((d) => Number.isInteger(d) && d >= 1 && d <= last))].sort((a, b) => a - b);
+    out.colors[r.slug] = safeColor(r.color);
+  }
+  return out;
 }
 
 export async function removeBuddy(sb, buddyId) {

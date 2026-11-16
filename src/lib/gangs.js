@@ -2,7 +2,7 @@
 // ticks on the gang's habit, between its dates (my_gangs()); everything shown is worked out here,
 // with the tracker's own schedule maths, so a gang never disagrees with anyone's month grid.
 // Pure functions of those rows and a date, checked by scripts/check-gangs.mjs.
-import { monthKey, shiftMonth, pad } from './dates.js';
+import { monthKey, shiftMonth, pad, daysIn } from './dates.js';
 import { monthStats, streakOf } from './stats.js';
 import { isDueDay, isFlexible, habitWeeks, weekOf, unitOf, CADENCES } from './schedule.js';
 
@@ -192,6 +192,55 @@ export function gangCranes(g, now) {
     ({ y, m } = shiftMonth(y, m, 1));
   }
   return { cranes, periods, unit };
+}
+
+// The sugoroku board (D-050): the gang's whole run as squares along a path. A square is a day
+// (rest days included, so each row of seven is a week of the gang), or a week or a month for
+// flexible schedules. Each square knows who folded, counting only members with their habit linked
+// who had joined by then; a square everyone folded is a gang crane, exactly as gangCranes counts.
+// `at` is the square the gang's piece stands on today: -1 before the start (on the first square's
+// "start" mark), squares.length once it's over (on the finish). The piece moves on one square a
+// day whatever happened: nobody is ever sent back.
+//   square: { from, to, rest, state: 'all' | 'some' | 'none' | 'rest' | 'future', now, active, folded }
+//   active / folded: indexes into g.members
+export function boardOf(g, now) {
+  const start = parseDay(g.starts);
+  const end = parseDay(g.ends);
+  const todayKey = dayKey(now);
+  const unit = unitOf(habitFor(g, start.y, start.m));
+  const squares = [];
+  const judge = (from, to, target, rest = false) => {
+    const active = g.members.map((x, i) => (x.linked && x.joined <= to ? i : -1)).filter((i) => i >= 0);
+    const folded = active.filter((i) => [...g.members[i].days].filter((k) => k >= from && k <= to).length >= target);
+    const isNow = from <= todayKey && todayKey <= to;
+    let state;
+    if (rest) state = 'rest';
+    else if (from > todayKey) state = 'future';
+    else if (active.length && folded.length === active.length) state = 'all';
+    else state = folded.length ? 'some' : 'none';
+    squares.push({ from, to, rest, state, now: isNow, active, folded });
+  };
+  if (unit === 'day') {
+    for (let d = start, guard = 0; dayKey(d) <= g.ends && guard < 400; d = addDays(d, 1), guard++) {
+      const k = dayKey(d);
+      judge(k, k, 1, !isDueDay(habitFor(g, d.y, d.m), d.y, d.m, d.d));
+    }
+  } else {
+    let { y, m } = start;
+    for (let guard = 0; guard < 14 && (y < end.y || (y === end.y && m <= end.m)); guard++) {
+      const h = habitFor(g, y, m);
+      const spans = unit === 'month' ? [{ from: h.start || 1, to: daysIn(y, m), target: 1 }] : habitWeeks(h, y, m);
+      for (const w of spans) {
+        const from = `${y}-${pad(m)}-${pad(w.from)}`;
+        const to = `${y}-${pad(m)}-${pad(w.to)}`;
+        if (from > g.ends || from < g.starts) continue;
+        judge(from, to < g.ends ? to : g.ends, w.target || 1);
+      }
+      ({ y, m } = shiftMonth(y, m, 1));
+    }
+  }
+  const at = todayKey < g.starts ? -1 : todayKey > g.ends ? squares.length : squares.findIndex((x) => x.now);
+  return { squares, unit, at };
 }
 
 // A finished gang as a keepsake row for gang_keepsakes: the gang, its cranes, and everyone's
