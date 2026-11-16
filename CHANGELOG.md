@@ -3,7 +3,7 @@
 What changed, for people using the app. Why it changed lives in [docs/decisions.md](docs/decisions.md).
 Dates are when the work landed.
 
-## Unreleased
+## 0.21.0 — 17 November 2026
 
 ### Changed
 - **Flock is two lists.** Your gangs and your buddies, side by side, each a slip that says how it
