@@ -356,6 +356,27 @@ D-047). This is the members' tags and figures, which they could already see.
 - **Tests:** `check-schema.mjs` covers other people's rows, visitors, the shape, no updates and
   account deletion. `check-gangs.mjs` covers the gang crane count and the keepsake.
 
+### 17 November 2026 — a buddy's days (branch `feature/flock-lists`)
+
+At "My habits", someone can now let a buddy see the days they ticked the habits they picked (D-051).
+- **Consent:** a separate yes per buddy (`buddies.days`), off for everyone until they turn it on.
+  The review found that picking "My habits" turned it on at once while the words said it was
+  optional; fixed so only the "Day by day too" box turns it on, and leaving "My habits" turns it
+  off.
+- **Reading:** only `buddy_month()`, a SECURITY DEFINER function acting for `auth.uid()`. It needs
+  the pair both ways, "My habits" with the days on, and returns only picked habits, never a private
+  one, for one month from 11 back to 1 ahead. A stored yes under a lower level does nothing. No
+  grant to visitors.
+- **Writing:** `days` joins the columns a person may update on their own sharing rows only; the
+  existing policy stops anyone changing someone else's.
+- **Shown in the page:** habit names through `safeName` and `esc()`; colours are hex in the database
+  and checked again with `safeColor`; schedules through `cleanSchedule`. Gang and buddy pages take
+  ids from the address only after a strict uuid check, and only compare them.
+- **Known, unchanged:** a habit id that is deleted and later reused by a new habit is still picked
+  for the buddies it was picked for (true of names and figures before this too).
+- **Tests:** `check-schema.mjs` covers the yes being off, someone else's row, levels below "My
+  habits", private and unpicked habits, the month range, strangers and visitors.
+
 ### Accepted risks (owner's decision, 24 Oct 2026, D-016)
 
 - The repository is public and holds the owner's January–October 2026 habit log (names, times,

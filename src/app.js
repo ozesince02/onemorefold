@@ -44,13 +44,20 @@ let stage = null;
 let lastProgress = -1;
 
 // ---------- Routing: #/month/2026-10, #/year/2026, #/habits/2026-10, #/fold/2026, #/flock ----------
+// Flock also has a page per buddy and per gang (D-050): #/flock/buddy/<id>, #/flock/gang/<id>, and
+// #/flock/gang/new to start one.
 // Only months from the first one with habits up to next month can be opened (D-017); anything
 // else lands on the nearest month that can.
 function route() {
-  const [name = 'month', arg] = location.hash.replace(/^#\/?/, '').split('#')[0].split('/');
+  const [name = 'month', arg, id] = location.hash.replace(/^#\/?/, '').split('#')[0].split('/');
   const state = store.get();
   const current = monthKey(now.y, now.m);
-  if (name === 'flock') return { name };
+  if (name === 'flock') {
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+    if (arg === 'buddy' && uuid.test(id || '')) return { name, sub: 'buddy', id };
+    if (arg === 'gang' && (id === 'new' || uuid.test(id || ''))) return { name, sub: 'gang', id };
+    return { name };
+  }
   if (name === 'year' || name === 'fold') {
     const { first } = yearBounds(state, now);
     const year = Math.min(now.y, Math.max(first, Number(arg) || now.y));
@@ -63,7 +70,7 @@ function route() {
 }
 
 // The address that matches a route, so a corrected route doesn't leave a wrong URL behind.
-const hashOf = (r) => (r.name === 'flock' ? '#/flock' : `#/${r.name}/${r.key || r.year}`);
+const hashOf = (r) => (r.name === 'flock' ? `#/flock${r.sub ? `/${r.sub}/${r.id}` : ''}` : `#/${r.name}/${r.key || r.year}`);
 
 // ---------- Render ----------
 let queued = false;
@@ -105,7 +112,7 @@ function render() {
   if (r.name === 'year') view.innerHTML = yearView(r.year);
   else if (r.name === 'fold') view.innerHTML = foldView(r.year);
   else if (r.name === 'habits') view.innerHTML = habitsView(r.key);
-  else if (r.name === 'flock') view.innerHTML = flock.render();
+  else if (r.name === 'flock') view.innerHTML = flock.render(r);
   else view.innerHTML = monthView(r.key, year);
 
   placeCrane();
@@ -608,7 +615,7 @@ function habitsView(key) {
       </div>
       ${scheduleEditor(h)}
       ${ui.account.status !== 'signed-in' ? '' : store.challengeOf(h.id)
-    ? `<p class="private-toggle gang-note"><b>Part of a gang.</b> Your gang sees your ticks on this habit. <a class="seg-link" href="#/flock">See the gang</a></p>`
+    ? `<p class="private-toggle gang-note"><b>Part of a gang.</b> Your gang sees your ticks on this habit. <a class="seg-link" href="#/flock/gang/${store.challengeOf(h.id)}">See the gang</a></p>`
     : `<label class="private-toggle"><input type="checkbox" data-private="${h.id}" data-focus="private-${h.id}" ${store.isPrivate(h.id) ? 'checked' : ''}><span><b>Private.</b> Never shown to any buddy, whatever they're allowed to see.</span></label>
       ${store.isPrivate(h.id) ? '' : `<p class="private-toggle gang-note"><a class="seg-link" href="#/flock/start/${h.id}">Fold it with friends</a> Start a gang for this habit.</p>`}`}
       ${ui.swatchFor === h.id ? `<div class="swatches" role="group" aria-label="Paper colours">${PAPERS.map((p) => `<button type="button" style="--c:${p}" data-color="${h.id}:${p}" aria-pressed="${p.toLowerCase() === c.toLowerCase()}" aria-label="${p}"></button>`).join('')}</div>` : ''}
@@ -706,7 +713,6 @@ const menu = createAccountMenu($('[data-account]'), { page: 'app', onChoose: cho
 // Flock (D-044): buddies, as name cards. A card handed over by link is picked up before anything draws.
 captureCard();
 const flock = createFlock({ view, store, getClient, toast, rerender: scheduleRender, drawNow: () => render(), openAccount: () => menu.open(), today });
-window.addEventListener('resize', () => { if (route().name === 'flock') scheduleRender(); });
 flock.captureStart();
 wireCraneNotes(view);
 wireReorder(view, (ids) => store.reorderHabits(route().key, ids));

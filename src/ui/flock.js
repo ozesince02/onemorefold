@@ -1,26 +1,22 @@
-// Flock (D-044): buddies, as name cards. Your tag is a hanko; adding a buddy is handing over your
-// card (a one-time link). Everything about a buddy comes from my_buddies(), which returns only what
-// their level allows (D-029); your own figures are worked out here and published for them (D-045).
-// All text from the account (tags, habit names) is escaped with esc() when shown.
-import { gsap } from 'gsap';
-import { Flip } from 'gsap/Flip';
+// Flock (D-044, D-050): your gangs and your buddies, as two lists, and a page for each. Your tag
+// is a hanko; adding a buddy is handing over your card (a one-time link). Everything about a buddy
+// comes from my_buddies() and buddy_month(), which return only what their level allows (D-029,
+// D-051); your own figures are worked out here and published for them (D-045). All text from the
+// account (tags, habit names) is escaped with esc() when shown.
 import { esc } from '../lib/sanitize.js';
-import { monthName, monthKey } from '../lib/dates.js';
+import { monthName, monthKey, shiftMonth } from '../lib/dates.js';
 import { STORE_KEY, APP_PATH } from '../config.js';
 import { nameProblem, codeProblem, cleanCode, suggestCode, tagText, NAME_MAX } from '../lib/tags.js';
-import { LEVELS, LEVEL_LABELS, LEVEL_HINTS, figuresOf, trendOf, ageOf, INVITE_DAYS, BUDDY_LIMIT } from '../lib/buddies.js';
+import { LEVELS, LEVEL_LABELS, LEVEL_HINTS, figuresOf, trendOf, INVITE_DAYS, BUDDY_LIMIT } from '../lib/buddies.js';
 import {
   CARD_TOKEN, loadMyTag, saveMyTag, createCard, openCards, takeBackCard, peekCard, acceptCard, declineCard,
-  loadBuddies, saveSharing, removeBuddy, publishFigures,
+  loadBuddies, saveSharing, removeBuddy, publishFigures, loadBuddyMonth,
 } from '../lib/buddies-api.js';
 import { noteTrigger } from './note-trigger.js';
-import { createGangs } from './flock-gangs.js';
+import { createGangs, CHEVRON, BACK } from './flock-gangs.js';
+import { figuresHTML, monthGridHTML } from './flock-buddy.js';
 import { describe } from '../lib/schedule.js';
 import { parseDay } from '../lib/gangs.js';
-import { shelvesHTML, scrollHTML, pulledOut } from './shelf.js';
-
-gsap.registerPlugin(Flip);
-const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // A card someone handed you waits here (this tab only) while you sign in or pick a tag.
 const CARD_KEY = `${STORE_KEY}:card`;
@@ -36,14 +32,18 @@ export function captureCard() {
   return true;
 }
 
-// The paper behind each card, in the order buddies arrived.
+// The paper behind each buddy, in the order they arrived.
 const CARD_PAPERS = ['sora', 'sakura', 'matcha', 'yamabuki', 'kraft'];
+const TRENDS = { rising: 'Rising', steady: 'Steady', quieter: 'Quieter lately' };
 const dayMonth = (ms) => { const d = new Date(ms); return `${d.getDate()} ${monthName(d.getMonth() + 1)}`; };
 const dateText = (iso) => { const [, m, d] = iso.split('-').map(Number); return `${d} ${monthName(m)}`; };
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const hanko = (code, size = '') => `<span class="hanko${size ? ` hanko--${size}` : ''}" data-len="${String(code).length}" aria-hidden="true">${esc(code)}</span>`;
+const prev = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const next = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const BACK_MONTHS = 11; // how far back a buddy's month can be opened (buddy_month() agrees)
 
-export function createFlock({ view, store, getClient, toast, rerender, drawNow = rerender, openAccount, today }) {
+export function createFlock({ view, store, getClient, toast, rerender, openAccount, today }) {
   let account = { status: 'loading' };
   let loaded = false;           // tag, buddies and cards fetched for this account
   let loading = null;
@@ -55,28 +55,15 @@ export function createFlock({ view, store, getClient, toast, rerender, drawNow =
   let card = { token: readCard(), peek: null, asked: false, level: 'doing', busy: false };
   let draft = { name: '', code: suggestCode(), error: '', busy: false };
   let removing = '';            // buddy id waiting for "Remove" to be confirmed
-  const openShares = new Set(); // buddy cards whose "You share" is open, kept across redraws
   let changeOpen = false;       // "Change your tag" open
   let published = '';           // what buddy_figures holds, as far as this tab knows
+  // A buddy's page: which buddy and month is open, and the months fetched so far.
+  let shown = { id: '', y: 0, m: 0 };
+  const months = new Map();     // 'id:y-m' -> month, or 'loading'
 
   const sb = () => getClient();
   const signedIn = () => account.status === 'signed-in' && account.id;
-  // Shelves (D-048): one scroll open at a time, across both shelves. Widths are measured after
-  // each draw, so the shelves know how many rolls stand on them and whether a scroll fits open.
-  let openKey = null;
-  const widths = { gangs: 0, buddies: 0 };
-  const setOpen = (key) => { openKey = key; rerender(); };
-  const gangs = createGangs({ store, sb, toast, rerender, today, userId: () => account.id, setOpen });
-
-  // A scroll pulled out of its shelf opens here, over the page.
-  const pull = document.createElement('dialog');
-  pull.className = 'scroll-pull';
-  pull.setAttribute('aria-label', 'An unrolled scroll');
-  pull.setAttribute('autofocus', ''); // the scroll itself takes focus when it opens, not its roll
-  pull.tabIndex = -1;
-  document.body.appendChild(pull);
-  pull.addEventListener('close', () => { if (openKey && pull.dataset.key === openKey) { openKey = null; rerender(); } });
-  pull.addEventListener('click', (e) => { if (e.target === pull) pull.close(); });
+  const gangs = createGangs({ store, sb, toast, rerender, today, userId: () => account.id });
 
   async function load() {
     if (!signedIn()) return;
@@ -87,7 +74,6 @@ export function createFlock({ view, store, getClient, toast, rerender, drawNow =
         [me, buddies, cards] = await Promise.all([loadMyTag(client, uid), loadBuddies(client), openCards(client), gangs.load()]);
         if (account.id !== uid) return;
         loaded = true; failed = '';
-        if (!me) draft.name ||= '';
         publish();
       } catch (err) {
         failed = err.message;
@@ -122,19 +108,20 @@ export function createFlock({ view, store, getClient, toast, rerender, drawNow =
     }, delay);
   }
 
-  function onAccount(next) {
-    const changed = next.id !== account.id || next.status !== account.status;
-    account = next;
+  function onAccount(nextAccount) {
+    const changed = nextAccount.id !== account.id || nextAccount.status !== account.status;
+    account = nextAccount;
     if (!changed) return;
     loaded = false; me = null; buddies = []; cards = []; fresh = null; published = ''; removing = '';
-    openKey = null;
+    months.clear(); shown = { id: '', y: 0, m: 0 };
     gangs.reset();
     card.peek = null; card.asked = false;
     if (signedIn()) load();
   }
 
   // ---------- Views ----------
-  function render() {
+  // `r` is the route: { name: 'flock', sub?: 'buddy' | 'gang', id? }.
+  function render(r = {}) {
     card.token = card.token || readCard();
     const head = (note = '') => `<div class="title-row flock-title"><h1>Flock <span class="sfx flock-sfx" aria-hidden="true">ナカマ</span></h1>
       ${note ? `<p class="finding">${note}</p>` : ''}</div>`;
@@ -161,24 +148,24 @@ export function createFlock({ view, store, getClient, toast, rerender, drawNow =
           ${tagForm('Keep it')}
         </section>`;
     }
+    if (r.sub === 'buddy') return buddyPage(r.id);
+    if (r.sub === 'gang') return r.id === 'new' ? gangs.startPage() : gangs.page(r.id);
+
     if (card.token && !card.asked) queueMicrotask(peek);
-    queueMicrotask(afterDraw);
     return `${head(`You're <strong>${esc(tagText(me.name, me.code))}</strong>. Nobody can search for you: buddies join with your card.`)}
       ${card.token ? cardSlip() : ''}
       <div class="board">
-        ${gangs.render({ openKey, width: widths.gangs || estimate('gangs') })}
-        <section class="panel span-8 flock-buddies" aria-labelledby="buddies-h">
-          <div class="panel-head"><h2 id="buddies-h">Buddies</h2><div class="flock-head-side"><p>${buddies.length ? `${plural(buddies.length, 'buddy', 'buddies')} · their last 7 days` : 'Nobody yet'}</p>${noteTrigger('buddies', 'Why buddies?')}</div></div>
-          ${shelvesHTML(buddyItems(), { open: openKey, width: widths.buddies || estimate('buddies'), label: 'Your buddies' })}
+        ${gangs.list()}
+        <section class="panel span-6 flock-buddies" aria-labelledby="buddies-h">
+          <div class="panel-head"><h2 id="buddies-h">Buddies</h2><div class="flock-head-side"><p>${buddies.length ? plural(buddies.length, 'buddy', 'buddies') : 'Nobody yet'}</p>${noteTrigger('buddies', 'Why buddies?')}</div></div>
+          <ul class="flock-list">${buddies.map(buddyRow).join('')}<li>${handOver()}</li></ul>
         </section>
-        <div class="span-4 side-stack">
-          <section class="panel" aria-labelledby="mycard-h">
-            <div class="panel-head"><h2 id="mycard-h">Your card</h2></div>
-            <div class="my-card">${hanko(me.code, 'big')}<p class="my-card-tag">${esc(me.name)}<span>#${esc(me.code)}</span></p></div>
-            <details class="flock-change" data-change-open ${changeOpen ? 'open' : ''}><summary>Change your tag</summary>${tagForm('Save the new tag')}</details>
-          </section>
-          ${cardsPanel()}
-        </div>
+        <section class="panel span-6" aria-labelledby="mycard-h">
+          <div class="panel-head"><h2 id="mycard-h">Your card</h2></div>
+          <div class="my-card">${hanko(me.code, 'big')}<p class="my-card-tag">${esc(me.name)}<span>#${esc(me.code)}</span></p></div>
+          <details class="flock-change" data-change-open ${changeOpen ? 'open' : ''}><summary>Change your tag</summary>${tagForm('Save the new tag')}</details>
+        </section>
+        ${cardsPanel()}
       </div>`;
   }
 
@@ -196,40 +183,111 @@ export function createFlock({ view, store, getClient, toast, rerender, drawNow =
     </form>`;
   }
 
-  // A buddy's name card: their figures as their level allows, and what you share with them.
-  function buddyCard(b, i) {
+  // What a buddy shares with you, in a few words.
+  const theirWords = (b) => ({
+    none: 'Just buddies',
+    doing: "Shares how they're doing",
+    habits: b.theirDays ? 'Shares habits, day by day' : 'Shares habits',
+  }[b.theirLevel]);
+
+  // A buddy in the Flock list.
+  function buddyRow(b, i) {
     const f = b.figures;
-    let body;
-    if (b.theirLevel === 'none') body = '<p class="note">Just buddies: they keep their habits to themselves.</p>';
-    else if (!f || !f.week_due) body = '<p class="note">No figures yet. They appear once they\'ve had something due.</p>';
-    else {
-      const trend = trendOf(f);
-      const age = ageOf(f.as_of, today());
-      body = `<p class="meishi-figure"><b>${f.week_done} of ${f.week_due}</b><span>due, last 7 days</span></p>
-        ${trend ? `<p class="meishi-trend meishi-trend--${trend}">${{ rising: 'Rising', steady: 'Steady', quieter: 'Quieter lately' }[trend]}</p>` : ''}
-        <p class="note">${f.month_done} of ${f.month_due} due, last 30 days${f.run >= 2 ? ` · longest run going: ${f.run} days` : ''}</p>
-        ${age ? `<p class="note">As of ${dateText(f.as_of)}${age > 2 ? `, ${age} days ago` : ''}</p>` : ''}`;
+    const trend = b.theirLevel !== 'none' ? trendOf(f) : '';
+    let side;
+    if (b.theirLevel === 'none') side = '<b>Buddies</b><small>no figures shared</small>';
+    else if (!f || !f.week_due) side = '<b>—</b><small>no figures yet</small>';
+    else side = `<b>${f.week_done} of ${f.week_due}</b><small>due, last 7 days</small>`;
+    return `<li><a class="flock-row" href="#/flock/buddy/${b.id}" style="--c:var(--${CARD_PAPERS[i % CARD_PAPERS.length]})">
+      <span class="flock-row-mark">${hanko(b.code)}</span>
+      <span class="flock-row-main"><b>${esc(b.name)}</b><small>${theirWords(b)}${trend ? ` · <span class="trend trend--${trend}">${TRENDS[trend]}</span>` : ''}</small></span>
+      <span class="flock-row-side">${side}</span>${CHEVRON}</a></li>`;
+  }
+
+  // The end of the Buddies list: hand over your card.
+  function handOver() {
+    const full = buddies.length >= BUDDY_LIMIT;
+    const link = fresh ? `${location.origin}${APP_PATH}#/flock/card/${fresh.token}` : '';
+    return `<div class="flock-row flock-row--new flock-handover">
+      <span class="flock-row-mark flock-row-plus" aria-hidden="true">+</span>
+      <span class="flock-row-main"><b>Hand over your card</b><small>${full ? `You have ${BUDDY_LIMIT} buddies, the most there can be.` : `A one-time link, good for ${INVITE_DAYS} days. Send it however you like.`}</small></span>
+      ${!fresh && !full ? '<button class="btn btn--quiet" type="button" data-card-make>Make a card</button>' : ''}
+      ${fresh ? `<div class="flock-handover-link"><label class="note" for="card-link">Your new card, good until ${dayMonth(fresh.until)}. It works once; this is the only time it's shown.</label>
+        <input id="card-link" class="card-link" readonly value="${esc(link)}" data-focus="card-link">
+        <div class="backup-actions"><button class="btn" type="button" data-card-copy>Copy link</button>${navigator.share ? '<button class="btn btn--quiet" type="button" data-card-share>Share</button>' : ''}</div></div>` : ''}
+    </div>`;
+  }
+
+  // ---------- A buddy's page ----------
+  const monthId = (id, y, m) => `${id}:${monthKey(y, m)}`;
+  function monthOf(id, y, m) {
+    const key = monthId(id, y, m);
+    const got = months.get(key);
+    if (got && got !== 'loading') return got;
+    if (!got) {
+      months.set(key, 'loading');
+      sb().then((c) => loadBuddyMonth(c, id, y, m))
+        .then((month) => months.set(key, month), () => months.set(key, { habits: [], checks: {}, colors: {}, failed: true }))
+        .finally(rerender);
     }
-    const sharing = `<details class="meishi-share" data-share-open="${b.id}" ${openShares.has(b.id) || b.id === removing ? 'open' : ''}>
-      <summary>You share: ${LEVEL_LABELS[b.myLevel]}</summary>
+    return null;
+  }
+
+  function buddyPage(id) {
+    const i = buddies.findIndex((x) => x.id === id);
+    if (i < 0) {
+      return `<div class="title-row flock-page-title">${BACK}<h1>Not a buddy</h1>
+        <p class="finding">You and this person aren't buddies any more, so there's nothing to show.</p></div>`;
+    }
+    const b = buddies[i];
+    const t = today();
+    if (shown.id !== id) shown = { id, y: t.y, m: t.m };
+    const n = b.habits.length;
+    const finding = {
+      none: `${esc(b.name)} keeps their habits to themselves. You're buddies all the same.`,
+      doing: `${esc(b.name)} shares how they're doing: totals and the trend, no habit names.`,
+      habits: b.theirDays ? `${esc(b.name)} shares their habits with you, day by day.` : `${esc(b.name)} shares ${n ? plural(n, 'habit') : 'their habits'} with you, and how each is going this month.`,
+    }[b.theirLevel];
+    const blocks = [];
+    if (b.theirLevel !== 'none') blocks.push(figuresHTML(b, t));
+    if (b.theirDays) {
+      const first = shiftMonth(t.y, t.m, -BACK_MONTHS);
+      const atFirst = shown.y * 12 + shown.m <= first.y * 12 + first.m;
+      const atNow = shown.y === t.y && shown.m === t.m;
+      const nav = `<div class="buddy-month-nav">
+        <button class="icon-btn" type="button" data-buddy-month="-1" aria-label="Their month before" ${atFirst ? 'disabled' : ''}>${prev}</button>
+        ${atNow ? '' : '<button class="icon-btn" type="button" data-buddy-month="0">This month</button>'}
+        <button class="icon-btn" type="button" data-buddy-month="1" aria-label="Their next month" ${atNow ? 'disabled' : ''}>${next}</button></div>`;
+      blocks.push(monthGridHTML(b, monthOf(id, shown.y, shown.m), shown.y, shown.m, t, nav));
+    } else if (b.theirLevel === 'habits' && n && b.figures?.week_due) {
+      blocks.push(`<section class="panel span-6 buddy-habits-panel" aria-labelledby="bh-h"><div class="panel-head"><h2 id="bh-h">Habits ${esc(b.name)} shares</h2><p>this month so far</p></div>
+        <ul class="buddy-habits">${b.habits.map((h) => `<li><span>${esc(h.name)}</span><b>${h.done} of ${h.due}</b> due, done</li>`).join('')}</ul></section>`);
+    }
+    blocks.push(sharePanel(b));
+    return `<div class="title-row flock-page-title">${BACK}
+        <h1 class="buddy-title">${hanko(b.code)}<span>${esc(b.name)}</span></h1>
+        <p class="finding">${b.since ? `Buddies since ${dateText(b.since)}. ` : ''}${finding}</p></div>
+      <div class="board">${blocks.join('')}</div>`;
+  }
+
+  // What you share with a buddy, and removing them.
+  function sharePanel(b) {
+    return `<section class="panel span-6 buddy-share" aria-labelledby="bs-h">
+      <div class="panel-head"><h2 id="bs-h">What ${esc(b.name)} sees from you</h2></div>
       <fieldset class="choice"><legend class="visually-hidden">What ${esc(b.name)} sees from you</legend>
         ${LEVELS.map((l) => `<label><input type="radio" name="lvl-${b.id}" value="${l}" data-share-level="${b.id}" data-focus="lvl-${b.id}-${l}" ${l === b.myLevel ? 'checked' : ''}><i></i><span><b>${LEVEL_LABELS[l]}</b> ${LEVEL_HINTS[l]}</span></label>`).join('')}
       </fieldset>
       ${b.myLevel === 'habits' ? habitPicker(b) : ''}
       ${b.id === removing
         ? `<div class="meishi-remove"><p>Remove ${esc(b.name)}? Neither of you sees anything about the other after this. They aren't told.</p>
-            <button class="btn" type="button" data-buddy-remove-yes="${b.id}">Remove</button>
-            <button class="seg-link" type="button" data-buddy-remove-no>Keep them</button></div>`
-        : `<button class="seg-link meishi-remove-link" type="button" data-buddy-remove="${b.id}">Remove buddy</button>`}
-    </details>`;
-    return `<article class="meishi sheet-cols meishi--${CARD_PAPERS[i % CARD_PAPERS.length]}" aria-label="${esc(tagText(b.name, b.code))}">
-      <div class="sheet-col"><header><h3>${esc(b.name)}</h3>${hanko(b.code)}</header>${body}</div>
-      ${b.theirLevel === 'habits' && b.habits.length && b.figures?.week_due ? `<div class="sheet-col"><p class="note">Habits ${esc(b.name)} shares, this month</p><ul class="meishi-habits">${b.habits.map((h) => `<li><span>${esc(h.name)}</span> ${h.done} of ${h.due} due</li>`).join('')}</ul></div>` : ''}
-      <div class="sheet-col">${sharing}</div>
-    </article>`;
+            <div class="backup-actions"><button class="btn" type="button" data-buddy-remove-yes="${b.id}">Remove</button>
+            <button class="seg-link" type="button" data-buddy-remove-no>Keep them</button></div></div>`
+        : `<button class="seg-link meishi-remove-link" type="button" data-buddy-remove="${b.id}">Remove ${esc(b.name)} as a buddy</button>`}
+    </section>`;
   }
 
-  // At "My habits": which of this month's habits this buddy sees. Private ones can't be picked.
+  // At "My habits": which of this month's habits this buddy sees, and whether day by day.
+  // Private ones can't be picked.
   function habitPicker(b) {
     const t = today();
     const month = store.get().months[monthKey(t.y, t.m)]?.habits || [];
@@ -239,93 +297,18 @@ export function createFlock({ view, store, getClient, toast, rerender, drawNow =
         const priv = store.isPrivate(h.id);
         return `<label style="--c:${store.color(h.id)}"><input type="checkbox" data-share-habit="${b.id}:${h.id}" data-focus="sh-${b.id}-${h.id}" ${!priv && b.myHabits.includes(h.id) ? 'checked' : ''} ${priv ? 'disabled' : ''}><i></i><span>${esc(h.name)}${priv ? ' <em>(private)</em>' : ''}</span></label>`;
       }).join('')}
-    </fieldset>`;
-  }
-
-  function handOver() {
-    const full = buddies.length >= BUDDY_LIMIT;
-    const link = fresh ? `${location.origin}${APP_PATH}#/flock/card/${fresh.token}` : '';
-    return `<h3 class="scroll-title">Hand over your card</h3>
-      <p class="note">${full ? `You have ${BUDDY_LIMIT} buddies, the most there can be.` : `A one-time link, good for ${INVITE_DAYS} days. Send it however you like.`}</p>
-      ${fresh ? `<label class="note" for="card-link">Your new card, good until ${dayMonth(fresh.until)}. It works once; this is the only time it's shown.</label>
-        <input id="card-link" class="card-link" readonly value="${esc(link)}" data-focus="card-link">
-        <div class="backup-actions"><button class="btn" type="button" data-card-copy>Copy link</button>${navigator.share ? '<button class="btn btn--quiet" type="button" data-card-share>Share</button>' : ''}</div>`
-    : full ? '' : '<button class="btn" type="button" data-card-make>Make a card</button>'}`;
-  }
-
-  // The scrolls on the Buddies shelf (D-048): one per buddy, then a blank one for handing over.
-  function buddyItems() {
-    return [
-      ...buddies.map((b, i) => ({ key: `buddy:${b.id}`, name: b.name, seal: b.code, paper: CARD_PAPERS[i % CARD_PAPERS.length], sheet: buddyCard(b, i) })),
-      { key: 'new:buddy', name: 'New buddy', seal: '+', paper: 'kraft', ghost: true, sheet: `<div class="sheet-cols"><div class="sheet-col">${handOver()}</div></div>` },
-    ];
-  }
-
-  // Before the first measurement: a fair guess from the page's width.
-  function estimate(kind) {
-    const w = view.clientWidth || 1200;
-    return kind === 'gangs' || w < 760 ? w - 48 : Math.round((w - 24) * 8 / 12) - 48;
-  }
-
-  // After each draw: measure the shelves (redrawing once if they changed), and pull out the open
-  // scroll if it didn't fit on its shelf.
-  function afterDraw() {
-    const measure = (kind) => view.querySelector(`.flock-${kind} .shelves`)?.clientWidth || 0;
-    const next = { gangs: measure('gangs'), buddies: measure('buddies') };
-    if (next.gangs && next.buddies && (Math.abs(next.gangs - widths.gangs) > 8 || Math.abs(next.buddies - widths.buddies) > 8)) {
-      Object.assign(widths, next);
-      return drawNow();
-    }
-    const kind = openKey?.startsWith('gang') || openKey === 'new:gang' ? 'gangs' : 'buddies';
-    const list = kind === 'gangs' ? gangs.items() : buddyItems();
-    const item = openKey && list.find((x) => x.key === openKey);
-    if (item && pulledOut(list, openKey, widths[kind] || estimate(kind))) {
-      pull.dataset.key = openKey;
-      pull.innerHTML = `<div class="scroll-pull-inner" role="list">${scrollHTML(item, true, { pulled: true })}</div>
-        <button class="btn btn--quiet scroll-pull-close" type="button" data-scroll-close>Roll it up</button>`;
-      if (!pull.open) { pull.showModal(); pull.focus(); }
-    } else if (pull.open) {
-      pull.dataset.key = '';
-      pull.close();
-    }
-  }
-
-  // Unroll (or roll up) a scroll where it stands: its paper comes out (a CSS transition on the
-  // sheet's width) while the scrolls after it slide to the end of the shelf (Flip).
-  let rolling = 0;
-  function toggleScroll(key) {
-    clearTimeout(rolling);
-    const next = openKey === key ? null : key;
-    if (pull.open && pull.dataset.key === openKey) { pull.dataset.key = ''; pull.close(); }
-    if (reducedMotion()) { openKey = next; return drawNow(); }
-    const others = (el) => [...view.querySelectorAll('.shelf [data-flip-id]')].filter((x) => x !== el);
-    const current = view.querySelector('.shelf .scroll.is-open');
-    if (current && !next) {
-      // Rolling up: the paper goes back in, the others slide back, then the shelf is redrawn.
-      const state = Flip.getState(others(current));
-      current.classList.remove('is-open');
-      Flip.from(state, { targets: others(current), duration: 0.5, ease: 'power2.inOut' });
-      rolling = setTimeout(() => { openKey = null; drawNow(); }, 520);
-      return;
-    }
-    openKey = next;
-    drawNow();
-    const el = view.querySelector('.shelf .scroll.is-open');
-    if (!el) return; // pulled out instead: the dialog unrolls it
-    el.classList.remove('is-open');
-    void el.offsetWidth; // start from rolled up, so the transition runs
-    const state = Flip.getState(others(el));
-    el.classList.add('is-open');
-    Flip.from(state, { targets: others(el), duration: 0.5, ease: 'power2.inOut' });
+    </fieldset>
+    <label class="share-days"><input type="checkbox" data-share-days="${b.id}" data-focus="sd-${b.id}" ${b.myDays ? 'checked' : ''}>
+      <span><b>Day by day too</b> ${esc(b.name)} sees which days you ticked these, month by month, the way your Month tab shows them. ${b.myDays ? '' : 'Off until you turn it on.'}</span></label>`;
   }
 
   function cardsPanel() {
     const others = cards.length - (fresh ? 1 : 0);
     if (others <= 0) return '';
-    return `<section class="panel" aria-labelledby="cards-h">
+    return `<section class="panel span-6" aria-labelledby="cards-h">
       <div class="panel-head"><h2 id="cards-h">Cards handed over</h2><p>${plural(others, 'open card')}</p></div>
-      ${others > 0 ? `<ul class="open-cards">${cards.filter((c) => !fresh || c.until !== fresh.until).map((c) => `<li><span>Good until ${dayMonth(c.until)}</span><button class="seg-link" type="button" data-card-back="${esc(c.hash)}">Take back</button></li>`).join('')}</ul>
-        <p class="note">Older cards can't be shown again. Take one back if it went to the wrong place.</p>` : ''}
+      <ul class="open-cards">${cards.filter((c) => !fresh || c.until !== fresh.until).map((c) => `<li><span>Good until ${dayMonth(c.until)}</span><button class="seg-link" type="button" data-card-back="${esc(c.hash)}">Take back</button></li>`).join('')}</ul>
+      <p class="note">Older cards can't be shown again. Take one back if it went to the wrong place.</p>
     </section>`;
   }
 
@@ -389,54 +372,66 @@ export function createFlock({ view, store, getClient, toast, rerender, drawNow =
   }
 
   function clearCard() { writeCard(''); card = { token: '', peek: null, asked: false, level: 'doing', busy: false }; }
+  const share = (b, after) => act((c) => saveSharing(c, account.id, b.id, b.myLevel, b.myHabits, b.myDays), () => { publish(); after?.(); });
 
   // <details> forget being open when redrawn; remember it here. 'toggle' doesn't bubble.
-  const roots = [view, pull];
-  const on = (type, fn, capture) => roots.forEach((root) => root.addEventListener(type, fn, capture));
-  on('toggle', (e) => {
-    const d = e.target;
-    gangs.onToggle(d);
-    if (d.matches?.('[data-share-open]')) { if (d.open) openShares.add(d.dataset.shareOpen); else openShares.delete(d.dataset.shareOpen); }
-    if (d.matches?.('[data-change-open]')) changeOpen = d.open;
+  view.addEventListener('toggle', (e) => {
+    if (e.target.matches?.('[data-change-open]')) changeOpen = e.target.open;
   }, true);
-  on('submit', (e) => {
+  view.addEventListener('submit', (e) => {
     if (gangs.onSubmit(e)) return;
     const form = e.target.closest('[data-tag-form]');
     if (!form) return;
     e.preventDefault();
     submitTag(form);
   });
-  on('input', (e) => {
+  view.addEventListener('input', (e) => {
     const form = e.target.closest('[data-tag-form]');
     if (form) { draft[e.target.name] = e.target.value; if (draft.error) { draft.error = ''; form.querySelector('.field-error').textContent = ''; } }
   });
-  on('change', (e) => {
+  view.addEventListener('change', (e) => {
     const t = e.target;
     if (gangs.onChange(t)) return;
     if (t.matches('[data-card-level]')) { card.level = LEVELS.includes(t.value) ? t.value : 'doing'; return; }
     if (t.matches('[data-share-level]')) {
       const b = buddies.find((x) => x.id === t.dataset.shareLevel);
       if (!b || !LEVELS.includes(t.value)) return;
+      // The days are never part of a level: "Day by day too" is its own yes, and leaving
+      // "My habits" takes it back (D-051).
+      b.myDays = false;
       b.myLevel = t.value;
-      return act((c) => saveSharing(c, account.id, b.id, b.myLevel, b.myHabits), () => { publish(); toast(`${b.name} now sees: ${LEVEL_LABELS[b.myLevel]}.`); });
+      return share(b, () => toast(`${b.name} now sees: ${LEVEL_LABELS[b.myLevel]}.`));
     }
     if (t.matches('[data-share-habit]')) {
       const [id, slug] = t.dataset.shareHabit.split(':');
       const b = buddies.find((x) => x.id === id);
       if (!b || store.isPrivate(slug)) return;
       b.myHabits = t.checked ? [...new Set([...b.myHabits, slug])] : b.myHabits.filter((s) => s !== slug);
-      return act((c) => saveSharing(c, account.id, b.id, b.myLevel, b.myHabits), () => publish());
+      return share(b);
+    }
+    if (t.matches('[data-share-days]')) {
+      const b = buddies.find((x) => x.id === t.dataset.shareDays);
+      if (!b || b.myLevel !== 'habits') return;
+      b.myDays = t.checked;
+      return share(b, () => toast(b.myDays ? `${b.name} sees your days for these habits.` : `${b.name} no longer sees your days.`));
     }
   });
-  on('click', (e) => {
+  view.addEventListener('click', (e) => {
     const t = e.target;
-    const roll = t.closest('[data-scroll]');
-    if (roll) return toggleScroll(roll.dataset.scroll);
-    if (t.closest('[data-scroll-close]')) return pull.close();
     if (gangs.onClick(t)) return;
     if (t.closest('[data-flock-signin]')) return openAccount();
     if (t.closest('[data-flock-retry]')) { failed = ''; rerender(); return load(); }
     if (t.closest('[data-tag-new]')) { draft.code = suggestCode(); draft.error = ''; return rerender(); }
+    const step = t.closest('[data-buddy-month]');
+    if (step) {
+      const d = Number(step.dataset.buddyMonth);
+      const now = today();
+      const to = d === 0 ? { y: now.y, m: now.m } : shiftMonth(shown.y, shown.m, d);
+      const first = shiftMonth(now.y, now.m, -BACK_MONTHS);
+      const n = to.y * 12 + to.m;
+      if (n <= now.y * 12 + now.m && n >= first.y * 12 + first.m) shown = { ...shown, ...to };
+      return rerender();
+    }
     if (t.closest('[data-card-make]')) {
       return act(async (c) => { fresh = await createCard(c); cards = await openCards(c); }, () => toast('A new card, ready to send.'));
     }
@@ -487,13 +482,14 @@ export function createFlock({ view, store, getClient, toast, rerender, drawNow =
       const b = buddies.find((x) => x.id === yes.dataset.buddyRemoveYes);
       removing = '';
       if (!b) return rerender();
-      return act(async (c) => { await removeBuddy(c, b.id); buddies = buddies.filter((x) => x.id !== b.id); }, () => { publish(); toast(`Removed ${b.name}.`); });
+      return act(async (c) => { await removeBuddy(c, b.id); buddies = buddies.filter((x) => x.id !== b.id); location.hash = '#/flock'; }, () => { publish(); toast(`Removed ${b.name}.`); });
     }
   });
 
-  // Coming back to Flock, or to the tab: fresh figures from buddies and gangs.
+  // Coming back to Flock, or to the tab: fresh figures from buddies and gangs, and fresh months.
   async function refresh() {
     if (!signedIn() || !loaded || !me) return;
+    months.clear();
     try { const c = await sb(); [buddies] = await Promise.all([loadBuddies(c), gangs.load()]); rerender(); } catch { /* keep what's shown */ }
   }
 
@@ -502,7 +498,7 @@ export function createFlock({ view, store, getClient, toast, rerender, drawNow =
     const m = location.hash.match(/^#\/flock\/start\/([a-z0-9][a-z0-9-]{0,63})$/);
     if (!m) return false;
     gangs.startFrom(m[1]);
-    history.replaceState(null, '', `${location.pathname}#/flock`);
+    history.replaceState(null, '', `${location.pathname}#/flock/gang/new`);
     return true;
   }
 
