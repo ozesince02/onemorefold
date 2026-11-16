@@ -11,6 +11,21 @@ missed day as a fall to get up from, never a failure.
 
 ## Ideas
 
+### A home page for someone deciding, and the story on its own page (13 Nov 2026, from the owner)
+The landing page tells the owner's story more than it shows the product. Today it runs: the hero
+and "try it with these six", "Seven falls, then a spreadsheet", "The whole sheet, minus the
+formulas", the owner's year so far, "Things a spreadsheet can't do", then the close. Someone who
+has never heard of One More Fold has to read a life story before learning what it does for them.
+- **Rebuild the home page for a potential user:** what it is in one line, what a day with it
+  looks like (tick, crane, month grid), what's in it (reminders with the app closed, summaries,
+  Flock: buddies and gangs, the year and the wish), that it's free with no ads or tracking, and
+  how to start. Real screens, in the paper style.
+- **Keep the story separate:** move "Seven falls, then a spreadsheet" and the owner's year to their
+  own page (an "Our story" page, linked from the home page and the footer), alongside the cranes
+  story scroll (D-023). The landing's real figures (D-016) can go with it.
+- **To settle when we start:** what stays above the fold; whether "try it with these six" (the
+  demo) stays on the home page; the new page's name and address.
+
 ### A month you fold into an origami (23 Oct 2026, from the owner)
 As you tick habits through the month, a 3D origami model assembles in the Month view: each tick a
 fold, each week a stage, the full model at month end. How full it is shows how the month went.
@@ -52,6 +67,16 @@ The two parts of gangs left for later (D-046, D-047):
 - **A push when the gang's crane is done:** "Run club: everyone folded today", off by default like
   the summaries. The send-reminders job would need the gang's ticks, through a function like
   `my_gangs()` but for the service role.
+
+### Release emails, for people who ask for them (17 Nov 2026, from the owner; later)
+An email to existing users when something new ships. The privacy page says email is used only to
+sign in, so it has to be asked for first:
+- **An opt-in:** "Email me when something new ships" in the account chit, off by default, stored
+  with the account. Announced through the noren and the patch notes.
+- **Sending:** Claude drafts each email from the patch notes; the owner sends it by hand to those
+  who said yes, with an unsubscribe link in every email.
+- **To settle when we start:** which email service (it holds the addresses, so the privacy page
+  names it), and the sending domain's SPF and DKIM so it doesn't land in spam.
 
 ### Nudges between buddies (27 Oct 2026, from the owner; not in the first version)
 A buddy could send a nudge when a habit isn't ticked yet. Left out for now: the other person may
@@ -156,6 +181,35 @@ To keep in mind when building:
 - empty states still need 3:1 contrast in Light, Warm and Dark;
 - animate only the tapped cell, so a month of 30 habits stays smooth;
 - a custom cursor as an SVG data URI is allowed by the current CSP (`img-src data:`).
+
+### Groups of habits (17 Nov 2026, from the owner; later)
+The owner trains on a different thing each day: Gym on Monday and Friday, Easy runs on Wednesday
+and Thursday, a PR run on Saturday, a walk on Sunday. That's four rows in the grid, each mostly
+rest-day dots, for what is really one habit, "train every day". The idea: put them under one parent,
+**Training**, shown collapsed as one row. Ticking a child fills the parent's day; only the children
+are counted.
+
+**Worth doing, but only as a way of showing habits, not as a new kind of habit.**
+- **The case for it:** schedules that take turns are common (gym and runs, a language course and
+  its review day, DSA and system design). Four sparse rows are noisier than one full one, and the
+  same complaint as the tick styles above: too many boxes.
+- **What makes it a bad idea if built as a real parent:** a parent with its own ticks, goal or
+  streak would touch everything that counts. Daily scores and cranes would count the day twice,
+  "% due" would need a new meaning, and gangs, buddy sharing, private habits, reminders, backups
+  and sync all work per habit and would each need rules for parents. That's a lot of risk for a
+  tidier grid.
+- **The light version:** a group is only a label on habits (a name and an order, per month, like
+  the Habits page's order), and only the grid uses it.
+  - **Collapsed:** one row. A day's cell is the habit due that day, ticked or not; days nothing is
+    due are rest dots. Its figures add up the children's ("8 of 13 due") and say so (D-006).
+  - **Ticking on the collapsed row** works when exactly one child is due that day, which is every
+    day in the owner's case. When two or none are due, a tap opens the group instead, so there's
+    never a guess about which habit was ticked.
+  - **Everything else stays per habit:** stats, cranes, runs, reminders (Gym still at 19:00), the
+    Today panel, gangs (the Sunday walk stays a gang habit inside the group), buddies and privacy.
+  - **Expanded:** the children as they are now, with the group's name as a small header.
+- **To decide when building:** whether a group's run counts days any child was done (the "train
+  every day" run, which is the point for the owner), and whether groups also tidy the Today panel.
 
 ### Habit templates
 Start a new month or a new person from a template: "morning routine", "DSA prep", "language".
