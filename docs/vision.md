@@ -182,5 +182,34 @@ To keep in mind when building:
 - animate only the tapped cell, so a month of 30 habits stays smooth;
 - a custom cursor as an SVG data URI is allowed by the current CSP (`img-src data:`).
 
+### Groups of habits (17 Nov 2026, from the owner; later)
+The owner trains on a different thing each day: Gym on Monday and Friday, Easy runs on Wednesday
+and Thursday, a PR run on Saturday, a walk on Sunday. That's four rows in the grid, each mostly
+rest-day dots, for what is really one habit, "train every day". The idea: put them under one parent,
+**Training**, shown collapsed as one row. Ticking a child fills the parent's day; only the children
+are counted.
+
+**Worth doing, but only as a way of showing habits, not as a new kind of habit.**
+- **The case for it:** schedules that take turns are common (gym and runs, a language course and
+  its review day, DSA and system design). Four sparse rows are noisier than one full one, and the
+  same complaint as the tick styles above: too many boxes.
+- **What makes it a bad idea if built as a real parent:** a parent with its own ticks, goal or
+  streak would touch everything that counts. Daily scores and cranes would count the day twice,
+  "% due" would need a new meaning, and gangs, buddy sharing, private habits, reminders, backups
+  and sync all work per habit and would each need rules for parents. That's a lot of risk for a
+  tidier grid.
+- **The light version:** a group is only a label on habits (a name and an order, per month, like
+  the Habits page's order), and only the grid uses it.
+  - **Collapsed:** one row. A day's cell is the habit due that day, ticked or not; days nothing is
+    due are rest dots. Its figures add up the children's ("8 of 13 due") and say so (D-006).
+  - **Ticking on the collapsed row** works when exactly one child is due that day, which is every
+    day in the owner's case. When two or none are due, a tap opens the group instead, so there's
+    never a guess about which habit was ticked.
+  - **Everything else stays per habit:** stats, cranes, runs, reminders (Gym still at 19:00), the
+    Today panel, gangs (the Sunday walk stays a gang habit inside the group), buddies and privacy.
+  - **Expanded:** the children as they are now, with the group's name as a small header.
+- **To decide when building:** whether a group's run counts days any child was done (the "train
+  every day" run, which is the point for the owner), and whether groups also tidy the Today panel.
+
 ### Habit templates
 Start a new month or a new person from a template: "morning routine", "DSA prep", "language".
